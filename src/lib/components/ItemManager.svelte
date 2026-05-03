@@ -3,20 +3,34 @@
 	import { archiveItem, deleteItem, previewDeleteItem, unarchiveItem } from '$lib/db/repo';
 	import type { Item } from '$lib/db/types';
 
+	const itemsById = $derived(new Map($allItems.map((i) => [i.id, i])));
+
+	const childCountById = $derived.by(() => {
+		const counts = new Map<string, number>();
+		for (const i of $allItems) {
+			if (i.parentId) counts.set(i.parentId, (counts.get(i.parentId) ?? 0) + 1);
+		}
+		return counts;
+	});
+
 	const manageable = $derived(
 		[...$allItems]
 			.filter((i) => !i.homeId)
 			.sort((a, b) => {
 				if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+				const groupA = a.parentId ? (itemsById.get(a.parentId)?.name ?? a.name) : a.name;
+				const groupB = b.parentId ? (itemsById.get(b.parentId)?.name ?? b.name) : b.name;
+				const cmp = groupA.localeCompare(groupB);
+				if (cmp !== 0) return cmp;
+				// Same group: parent (no parentId) comes before its children.
+				if (!a.parentId && b.parentId) return -1;
+				if (a.parentId && !b.parentId) return 1;
 				return a.name.localeCompare(b.name);
 			})
 	);
 
-	const itemsById = $derived(new Map($allItems.map((i) => [i.id, i])));
-
-	function parentName(item: Item): string | null {
-		if (!item.parentId) return null;
-		return itemsById.get(item.parentId)?.name ?? null;
+	function childCount(item: Item): number {
+		return childCountById.get(item.id) ?? 0;
 	}
 
 	async function handleDelete(item: Item) {
@@ -56,8 +70,9 @@
 		{:else}
 			<ul class="divide-y divide-base-200">
 				{#each manageable as item (item.id)}
-					{@const parent = parentName(item)}
-					<li class="flex items-center gap-2 py-2">
+					{@const subCount = childCount(item)}
+					{@const canDelete = subCount === 0}
+					<li class="flex items-center gap-2 py-2" class:pl-8={!!item.parentId}>
 						<span
 							class="badge badge-sm"
 							class:badge-success={item.kind === 'asset'}
@@ -66,10 +81,12 @@
 							{item.kind}
 						</span>
 						<span class="flex-1 truncate text-sm">
-							{#if parent}
-								<span class="text-base-content/60">{parent} ›</span>
-							{/if}
 							{item.name}
+							{#if subCount > 0}
+								<span class="badge badge-ghost badge-xs">
+									{subCount} sub-item{subCount === 1 ? '' : 's'}
+								</span>
+							{/if}
 							{#if item.archivedAt}
 								<span class="badge badge-ghost badge-xs">archived</span>
 							{/if}
@@ -91,13 +108,24 @@
 								Archive
 							</button>
 						{/if}
-						<button
-							type="button"
-							class="btn btn-outline btn-xs btn-error"
-							onclick={() => handleDelete(item)}
-						>
-							Delete
-						</button>
+						{#if canDelete}
+							<button
+								type="button"
+								class="btn btn-outline btn-xs btn-error"
+								onclick={() => handleDelete(item)}
+							>
+								Delete
+							</button>
+						{:else}
+							<span
+								class="tooltip tooltip-left"
+								data-tip="Delete or reparent the {subCount} sub-item{subCount === 1
+									? ''
+									: 's'} first"
+							>
+								<button type="button" class="btn btn-outline btn-xs" disabled> Delete </button>
+							</span>
+						{/if}
 					</li>
 				{/each}
 			</ul>

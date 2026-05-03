@@ -50,16 +50,15 @@
 	</p>
 </header>
 
-<JournalCalendar {enteredDates} onSelect={handleDateSelect} />
-
 <HomeManager />
 
 <ItemManager />
 
-<div class="flex justify-start">
+<div class="flex items-center justify-start gap-2">
 	<button type="button" class="btn btn-sm btn-primary" onclick={newEntryToday}>
 		+ New entry (today)
 	</button>
+	<JournalCalendar {enteredDates} onSelect={handleDateSelect} />
 </div>
 
 {#if $entriesByDateDesc.length === 0}

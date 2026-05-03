@@ -119,6 +119,18 @@ function isJournalScoped(item: Item): boolean {
 }
 
 /**
+ * Parent items are containers — only their children get logged in journal
+ * entries. Including a parent in cost-to-move would either double-count
+ * (if also logged) or show "never logged" for an item that conceptually
+ * can't be logged. Returns the set of item ids that have children.
+ */
+export function parentItemIds(items: Item[]): Set<string> {
+	const ids = new Set<string>();
+	for (const i of items) if (i.parentId) ids.add(i.parentId);
+	return ids;
+}
+
+/**
  * Assets are default-enabled — a missing selection record is treated as ON,
  * matching `AssetSelectionList`'s `?? defaultAssetSelection()` rendering. The
  * user has to explicitly toggle off (creating a record with `enabled: false`)
@@ -129,8 +141,9 @@ export function resolveActiveAssets(
 	items: Item[],
 	latestAmounts: Record<string, number>
 ): ResolvedAsset[] {
+	const parents = parentItemIds(items);
 	return items
-		.filter((i) => i.kind === 'asset' && isJournalScoped(i))
+		.filter((i) => i.kind === 'asset' && isJournalScoped(i) && !parents.has(i.id))
 		.map((item) => {
 			const sel = state.assetSelections[item.id] ?? defaultAssetSelection();
 			return { item, sel };
@@ -148,8 +161,9 @@ export function resolveActiveJournalExpenses(
 	items: Item[],
 	latestAmounts: Record<string, number>
 ): ResolvedExpense[] {
+	const parents = parentItemIds(items);
 	return items
-		.filter((i) => i.kind === 'liability' && isJournalScoped(i))
+		.filter((i) => i.kind === 'liability' && isJournalScoped(i) && !parents.has(i.id))
 		.map((i) => ({ item: i, sel: state.expenseSelections[i.id] }))
 		.filter((p): p is { item: Item; sel: ExpenseSelection } => Boolean(p.sel?.enabled))
 		.map(({ item, sel }) => ({

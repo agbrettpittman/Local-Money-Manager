@@ -1,8 +1,102 @@
 @import 'tailwindcss';
 @plugin 'daisyui' {
-	themes:
-		light --default,
-		dark --prefersdark;
+	themes: false;
+}
+
+@plugin 'daisyui/theme' {
+	name: 'money';
+	default: true;
+	prefersdark: false;
+	color-scheme: light;
+
+	/* Sage/mint backgrounds — leans into the money palette */
+	--color-base-100: oklch(97% 0.014 145);
+	--color-base-200: oklch(94% 0.02 144.97);
+	--color-base-300: oklch(88% 0.03 145);
+	--color-base-content: oklch(22% 0.04 150);
+
+	/* Deep currency green — the headliner */
+	--color-primary: oklch(48% 0.135 152);
+	--color-primary-content: oklch(98% 0.01 145);
+
+	/* Forest green — secondary */
+	--color-secondary: oklch(35% 0.09 152);
+	--color-secondary-content: oklch(98% 0.01 145);
+
+	/* Gold — accents and highlights */
+	--color-accent: oklch(70% 0.15 75);
+	--color-accent-content: oklch(20% 0.04 75);
+
+	--color-neutral: oklch(25% 0.025 150);
+	--color-neutral-content: oklch(95% 0.01 145);
+
+	--color-info: oklch(60% 0.11 220);
+	--color-info-content: oklch(98% 0.01 220);
+
+	--color-success: oklch(58% 0.155 148);
+	--color-success-content: oklch(98% 0.01 148);
+
+	--color-warning: oklch(78% 0.15 75);
+	--color-warning-content: oklch(20% 0.04 75);
+
+	--color-error: oklch(58% 0.22 25);
+	--color-error-content: oklch(98% 0.01 25);
+
+	--radius-selector: 0.5rem;
+	--radius-field: 0.5rem;
+	--radius-box: 0.75rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 1;
+	--noise: 0;
+}
+
+@plugin 'daisyui/theme' {
+	name: 'money-dark';
+	default: false;
+	prefersdark: true;
+	color-scheme: dark;
+
+	/* Deep forest backgrounds */
+	--color-base-100: oklch(18% 0.025 152);
+	--color-base-200: oklch(14% 0.022 152);
+	--color-base-300: oklch(10% 0.02 152);
+	--color-base-content: oklch(92% 0.015 145);
+
+	/* Lighter green to read on dark */
+	--color-primary: oklch(72% 0.165 152);
+	--color-primary-content: oklch(15% 0.03 152);
+
+	--color-secondary: oklch(60% 0.13 152);
+	--color-secondary-content: oklch(15% 0.03 152);
+
+	--color-accent: oklch(78% 0.16 75);
+	--color-accent-content: oklch(20% 0.04 75);
+
+	--color-neutral: oklch(25% 0.025 150);
+	--color-neutral-content: oklch(92% 0.015 145);
+
+	--color-info: oklch(70% 0.12 220);
+	--color-info-content: oklch(15% 0.02 220);
+
+	--color-success: oklch(70% 0.165 148);
+	--color-success-content: oklch(15% 0.03 148);
+
+	--color-warning: oklch(82% 0.155 75);
+	--color-warning-content: oklch(15% 0.03 75);
+
+	--color-error: oklch(68% 0.22 25);
+	--color-error-content: oklch(98% 0.01 25);
+
+	--radius-selector: 0.5rem;
+	--radius-field: 0.5rem;
+	--radius-box: 0.75rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 1;
+	--noise: 0;
 }
 
 /* Tabular numerals everywhere we show currency */

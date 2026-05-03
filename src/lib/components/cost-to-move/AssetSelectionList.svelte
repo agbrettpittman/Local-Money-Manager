@@ -6,7 +6,7 @@
 		toggleAsset,
 		toggleAssetInvestment
 	} from '$lib/cost-to-move/actions';
-	import { calcFutureAssetValue } from '$lib/cost-to-move/calc';
+	import { calcFutureAssetValue, parentItemIds } from '$lib/cost-to-move/calc';
 	import { defaultAssetSelection } from '$lib/cost-to-move/defaults';
 	import { formatCurrency } from '$lib/format';
 	import type { CostToMoveState, Frequency, Item } from '$lib/db/types';
@@ -19,7 +19,26 @@
 	let { state, items, latestAmounts }: Props = $props();
 
 	const future = $derived(state.futureMode.enabled);
-	const assets = $derived(items.filter((i) => i.kind === 'asset' && !i.archivedAt && !i.homeId));
+	const itemsById = $derived(new Map(items.map((i) => [i.id, i])));
+	const parents = $derived(parentItemIds(items));
+	const assets = $derived(
+		items
+			.filter((i) => i.kind === 'asset' && !i.archivedAt && !i.homeId && !parents.has(i.id))
+			.sort(byParentGroup)
+	);
+
+	function parentName(item: Item): string | null {
+		if (!item.parentId) return null;
+		return itemsById.get(item.parentId)?.name ?? null;
+	}
+
+	function byParentGroup(a: Item, b: Item): number {
+		const groupA = parentName(a) ?? a.name;
+		const groupB = parentName(b) ?? b.name;
+		const cmp = groupA.localeCompare(groupB);
+		if (cmp !== 0) return cmp;
+		return a.name.localeCompare(b.name);
+	}
 
 	function selFor(itemId: string) {
 		return state.assetSelections[itemId] ?? defaultAssetSelection();
@@ -67,6 +86,9 @@
 								class="toggle toggle-primary toggle-sm"
 							/>
 							<span class="flex-1 truncate text-sm">
+								{#if parentName(item)}
+									<span class="text-base-content/60">{parentName(item)} ›</span>
+								{/if}
 								{item.name}
 								{#if !everLogged}
 									<span class="badge badge-ghost badge-xs">never logged</span>
