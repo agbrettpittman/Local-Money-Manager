@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+@plugin 'daisyui' {
+	themes:
+		light --default,
+		dark --prefersdark;
+}
+
+/* Tabular numerals everywhere we show currency */
+.num,
+input[inputmode='numeric'],
+input[type='number'] {
+	font-variant-numeric: tabular-nums;
+}
