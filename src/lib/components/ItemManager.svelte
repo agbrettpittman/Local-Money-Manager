@@ -1,7 +1,50 @@
 <script lang="ts">
 	import { allItems } from '$lib/stores/items';
-	import { archiveItem, deleteItem, previewDeleteItem, unarchiveItem } from '$lib/db/repo';
-	import type { Item } from '$lib/db/types';
+	import {
+		archiveItem,
+		createItem,
+		deleteItem,
+		previewDeleteItem,
+		unarchiveItem
+	} from '$lib/db/repo';
+	import type { Item, LineKind } from '$lib/db/types';
+
+	let adding = $state(false);
+	let draftName = $state('');
+	let draftKind = $state<LineKind>('asset');
+	let draftParentId = $state('');
+	let saveError = $state<string | null>(null);
+
+	function resetDraft() {
+		draftName = '';
+		draftKind = 'asset';
+		draftParentId = '';
+		saveError = null;
+	}
+
+	const possibleParents = $derived(
+		$allItems
+			.filter((i) => i.kind === draftKind && !i.parentId && !i.homeId && !i.archivedAt)
+			.sort((a, b) => a.name.localeCompare(b.name))
+	);
+
+	$effect(() => {
+		// Reset parent when kind changes — the previous selection may no longer be valid.
+		if (!possibleParents.some((p) => p.id === draftParentId)) draftParentId = '';
+	});
+
+	async function handleAdd(e: SubmitEvent) {
+		e.preventDefault();
+		const name = draftName.trim();
+		if (!name) return;
+		try {
+			await createItem(name, draftKind, draftParentId || undefined);
+			resetDraft();
+			adding = false;
+		} catch (err) {
+			saveError = err instanceof Error ? err.message : String(err);
+		}
+	}
 
 	const itemsById = $derived(new Map($allItems.map((i) => [i.id, i])));
 
@@ -51,16 +94,16 @@
 	}
 </script>
 
-<details class="collapse-arrow collapse border border-base-300 bg-base-100">
+<details open class="collapse-arrow collapse border border-base-300 bg-base-100">
 	<summary class="collapse-title flex items-center gap-2 font-medium">
 		📋 Manage items
 		<span class="badge badge-sm">{manageable.length}</span>
 	</summary>
 	<div class="collapse-content space-y-3">
 		<p class="text-sm text-base-content/70">
-			Archive items to hide them from pickers (history is preserved). Delete permanently removes the
-			item and any journal lines that reference it. Home-managed items are edited in the Homes
-			section above.
+			Active items are auto-added to new journal entries. Archive to hide from new entries (history
+			preserved). Delete permanently removes the item and any journal lines that reference it.
+			Home-managed items are edited in the Homes section.
 		</p>
 
 		{#if manageable.length === 0}
@@ -129,6 +172,67 @@
 					</li>
 				{/each}
 			</ul>
+		{/if}
+
+		{#if adding}
+			<form class="rounded-box border border-dashed border-base-300 p-3" onsubmit={handleAdd}>
+				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+					<label class="form-control sm:col-span-2 lg:col-span-1">
+						<div class="label py-0">
+							<span class="label-text text-xs font-medium">Name</span>
+						</div>
+						<input
+							type="text"
+							placeholder="e.g. Checking Account"
+							bind:value={draftName}
+							required
+							class="input input-sm w-full"
+						/>
+					</label>
+					<label class="form-control">
+						<div class="label py-0">
+							<span class="label-text text-xs font-medium">Kind</span>
+						</div>
+						<select bind:value={draftKind} class="select-bordered select w-full select-sm">
+							<option value="asset">Asset</option>
+							<option value="liability">Liability</option>
+						</select>
+					</label>
+					<label class="form-control">
+						<div class="label py-0">
+							<span class="label-text text-xs font-medium">Under (optional)</span>
+						</div>
+						<select bind:value={draftParentId} class="select-bordered select w-full select-sm">
+							<option value="">— top-level —</option>
+							{#each possibleParents as p (p.id)}
+								<option value={p.id}>{p.name}</option>
+							{/each}
+						</select>
+					</label>
+				</div>
+				{#if saveError}
+					<div class="mt-2 alert py-1 text-sm alert-error">
+						<span>{saveError}</span>
+					</div>
+				{/if}
+				<div class="mt-2 flex justify-end gap-2">
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						onclick={() => {
+							resetDraft();
+							adding = false;
+						}}
+					>
+						Cancel
+					</button>
+					<button type="submit" class="btn btn-sm btn-primary">+ Add item</button>
+				</div>
+			</form>
+		{:else}
+			<button type="button" class="btn w-full btn-outline btn-sm" onclick={() => (adding = true)}>
+				+ New item
+			</button>
 		{/if}
 	</div>
 </details>

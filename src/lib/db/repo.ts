@@ -289,18 +289,22 @@ export async function deleteEntry(id: string): Promise<void> {
 }
 
 /**
- * Returns the existing entry for `date`, or creates an empty one and returns it.
- * Always reads the DB (not a store), so it is safe to call before liveQuery has
- * emitted — preventing accidental overwrites of persisted entries.
+ * Returns the existing entry for `date`, or creates one (optionally pre-populated
+ * with `defaultLines`) and returns it. Always reads the DB (not a store), so it is
+ * safe to call before liveQuery has emitted — preventing accidental overwrites of
+ * persisted entries.
  */
-export async function getOrCreateEntry(date: string): Promise<JournalEntry> {
+export async function getOrCreateEntry(
+	date: string,
+	defaultLines: JournalLine[] = []
+): Promise<JournalEntry> {
 	const existing = await getEntryByDate(date);
 	if (existing) return existing;
 	const ts = nowIso();
 	const entry: JournalEntry = {
 		id: uuid(),
 		date,
-		lines: [],
+		lines: defaultLines.map((l) => ({ ...l })),
 		createdAt: ts,
 		updatedAt: ts
 	};

@@ -2,11 +2,10 @@
 	import { tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { entriesByDateDesc } from '$lib/stores/entries';
+	import { activeItems } from '$lib/stores/items';
 	import { getOrCreateEntry } from '$lib/db/repo';
 	import JournalCalendar from '$lib/components/JournalCalendar.svelte';
 	import JournalEntryAccordion from '$lib/components/JournalEntryAccordion.svelte';
-	import HomeManager from '$lib/components/HomeManager.svelte';
-	import ItemManager from '$lib/components/ItemManager.svelte';
 
 	const enteredDates = $derived(new SvelteSet($entriesByDateDesc.map((e) => e.date)));
 
@@ -30,7 +29,8 @@
 	}
 
 	async function handleDateSelect(date: string) {
-		const entry = await getOrCreateEntry(date);
+		const defaultLines = $activeItems.map((i) => ({ itemId: i.id, amount: 0 }));
+		const entry = await getOrCreateEntry(date, defaultLines);
 		openIds.add(entry.id);
 		await tick();
 		document
@@ -46,13 +46,10 @@
 <header>
 	<h1 class="text-2xl font-semibold">Journal</h1>
 	<p class="text-sm text-base-content/70">
-		Open today's entry or pick another day from the calendar.
+		Open today's entry or pick another day from the calendar. New entries are pre-populated from
+		your <a href="/assets-and-liabilities" class="link">Assets & Liabilities</a>.
 	</p>
 </header>
-
-<HomeManager />
-
-<ItemManager />
 
 <div class="flex items-center justify-start gap-2">
 	<button type="button" class="btn btn-sm btn-primary" onclick={newEntryToday}>

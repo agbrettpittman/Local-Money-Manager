@@ -59,7 +59,7 @@
 	}
 </script>
 
-<details class="collapse-arrow collapse border border-base-300 bg-base-100">
+<details open class="collapse-arrow collapse border border-base-300 bg-base-100">
 	<summary class="collapse-title flex items-center gap-2 font-medium">
 		🏠 Homes
 		<span class="badge badge-sm">{$activeHomes.length}</span>
