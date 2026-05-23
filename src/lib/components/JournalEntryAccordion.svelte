@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Item, JournalEntry, JournalLine, LineKind } from '$lib/db/types';
 	import { allItems } from '$lib/stores/items';
+	import { entriesByDate } from '$lib/stores/entries';
 	import { deleteEntry, getPriorEntry, upsertEntry } from '$lib/db/repo';
 	import JournalLineRow from '$lib/components/JournalLineRow.svelte';
 	import ItemPicker from '$lib/components/ItemPicker.svelte';
@@ -31,6 +32,19 @@
 
 	const itemsById = $derived(new Map($allItems.map((i) => [i.id, i])));
 	const linesWithItems = $derived(lines.map((l) => ({ line: l, item: itemsById.get(l.itemId) })));
+
+	// The most recent entry dated before this one — used to colour each line by trend.
+	const priorEntry = $derived.by(() => {
+		let prior: JournalEntry | undefined;
+		for (const e of $entriesByDate) {
+			if (e.date < entry.date) prior = e;
+			else break;
+		}
+		return prior;
+	});
+	const priorAmountByItem = $derived(
+		new Map((priorEntry?.lines ?? []).map((l) => [l.itemId, l.amount]))
+	);
 
 	const headerPoint = $derived(networthSeries([{ ...entry, lines }], $allItems)[0]);
 
@@ -156,6 +170,7 @@
 					<JournalLineRow
 						item={group.parentLine.item}
 						amount={group.parentLine.line.amount}
+						priorAmount={priorAmountByItem.get(group.parentLine.line.itemId)}
 						onCommit={(amt) => commitAmount(group.parentLine!.line.itemId, amt)}
 						onRemove={() => removeLine(group.parentLine!.line.itemId)}
 					/>
@@ -173,6 +188,7 @@
 								<JournalLineRow
 									item={child.item}
 									amount={child.line.amount}
+									priorAmount={priorAmountByItem.get(child.line.itemId)}
 									onCommit={(amt) => commitAmount(child.line.itemId, amt)}
 									onRemove={() => removeLine(child.line.itemId)}
 								/>

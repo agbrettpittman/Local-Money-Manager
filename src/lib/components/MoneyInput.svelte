@@ -9,6 +9,8 @@
 		disabled?: boolean;
 		ariaLabel?: string;
 		size?: 'sm' | 'md';
+		/** Extra class(es) for the input text colour (e.g. text-success / text-error). */
+		toneClass?: string;
 	}
 
 	let {
@@ -18,7 +20,8 @@
 		placeholder = '0',
 		disabled = false,
 		ariaLabel,
-		size = 'sm'
+		size = 'sm',
+		toneClass = ''
 	}: Props = $props();
 
 	let display = $state('');
@@ -59,5 +62,5 @@
 	oninput={handleInput}
 	onfocus={handleFocus}
 	onblur={handleBlur}
-	class="num input w-full text-right {size === 'sm' ? 'input-sm' : ''}"
+	class="num input w-full text-right {size === 'sm' ? 'input-sm' : ''} {toneClass}"
 />
