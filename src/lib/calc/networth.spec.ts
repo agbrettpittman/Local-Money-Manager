@@ -60,6 +60,37 @@ describe('networthSeries', () => {
 		expect(networthSeries(entries, items)[0].value).toBe(100);
 	});
 
+	it('excludes a group parent that has child lines (uses children instead)', () => {
+		const items = [
+			item('bank', 'Bank', 'asset'),
+			{ ...item('checking', 'Checking', 'asset'), parentId: 'bank' },
+			{ ...item('savings', 'Savings', 'asset'), parentId: 'bank' }
+		];
+		// Parent carries a stale 999 that must be ignored in favour of the children.
+		const entries = [
+			entry('2026-04-01', [
+				{ itemId: 'bank', amount: 999 },
+				{ itemId: 'checking', amount: 100 },
+				{ itemId: 'savings', amount: 50 }
+			])
+		];
+		expect(networthSeries(entries, items)[0]).toEqual({
+			date: '2026-04-01',
+			assetTotal: 150,
+			liabilityTotal: 0,
+			value: 150
+		});
+	});
+
+	it('counts a parent normally when it has no child lines in the entry', () => {
+		const items = [
+			item('bank', 'Bank', 'asset'),
+			{ ...item('checking', 'Checking', 'asset'), parentId: 'bank' }
+		];
+		const entries = [entry('2026-04-01', [{ itemId: 'bank', amount: 999 }])];
+		expect(networthSeries(entries, items)[0].value).toBe(999);
+	});
+
 	it('handles items appearing and disappearing across dates', () => {
 		const items = [item('a1', 'Cash', 'asset'), item('a2', 'Brokerage', 'asset')];
 		const entries = [

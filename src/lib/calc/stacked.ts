@@ -1,4 +1,5 @@
 import type { Item, JournalEntry, LineKind } from '$lib/db/types';
+import { containerParentIds } from './groups';
 
 export interface StackedPoint {
 	date: string;
@@ -27,10 +28,13 @@ export function stackedSeries(
 	const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
 
 	const points: StackedPoint[] = sorted.map((entry) => {
+		const containers = containerParentIds(entry.lines, items);
 		const byItem: Record<string, number> = {};
 		let total = 0;
 		for (const line of entry.lines) {
 			if (kindById.get(line.itemId) !== kind) continue;
+			// Group containers are represented by their children; skip to avoid double-counting.
+			if (containers.has(line.itemId)) continue;
 			byItem[line.itemId] = line.amount;
 			seenItemIds.add(line.itemId);
 			total += line.amount;

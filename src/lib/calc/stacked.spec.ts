@@ -71,6 +71,25 @@ describe('stackedSeries', () => {
 		expect(series.points[1].total).toBe(600);
 	});
 
+	it('excludes a group parent that has child lines', () => {
+		const items = [
+			item('bank', 'Bank', 'asset'),
+			{ ...item('checking', 'Checking', 'asset'), parentId: 'bank' },
+			{ ...item('savings', 'Savings', 'asset'), parentId: 'bank' }
+		];
+		const entries = [
+			entry('2026-04-01', [
+				{ itemId: 'bank', amount: 999 },
+				{ itemId: 'checking', amount: 100 },
+				{ itemId: 'savings', amount: 50 }
+			])
+		];
+		const series = stackedSeries(entries, items, 'asset');
+		expect(series.itemIds).toEqual(['checking', 'savings']);
+		expect(series.points[0].byItem).toEqual({ checking: 100, savings: 50 });
+		expect(series.points[0].total).toBe(150);
+	});
+
 	it('still resolves archived items if they appeared in entries', () => {
 		const items = [{ ...item('a1', 'OldCash', 'asset'), archivedAt: '2026-04-05T00:00:00Z' }];
 		const entries = [entry('2026-04-01', [{ itemId: 'a1', amount: 100 }])];

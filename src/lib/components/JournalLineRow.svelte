@@ -8,11 +8,13 @@
 		amount: number;
 		/** Same item's amount in the previous journal entry, if any, for trend colouring. */
 		priorAmount?: number;
-		onCommit: (amount: number) => void;
-		onRemove: () => void;
+		/** Auto-calculated rows (group totals) render the value as static text — no input, no remove. */
+		readonly?: boolean;
+		onCommit?: (amount: number) => void;
+		onRemove?: () => void;
 	}
 
-	let { item, amount, priorAmount, onCommit, onRemove }: Props = $props();
+	let { item, amount, priorAmount, readonly = false, onCommit, onRemove }: Props = $props();
 
 	// Colour the value relative to the prior entry: better for net worth is green.
 	// For assets that means a higher value; for liabilities, a lower one.
@@ -32,6 +34,11 @@
 <div class="flex items-center gap-2 py-1">
 	<span class="flex-1 truncate text-sm">
 		{item.name}
+		{#if readonly}
+			<span class="ml-1 text-xs text-base-content/40" title="Auto-calculated from the items below"
+				>(auto)</span
+			>
+		{/if}
 		{#if item.archivedAt}
 			<span class="badge badge-ghost badge-xs">archived</span>
 		{/if}
@@ -41,20 +48,27 @@
 			{trend.higher ? '▲' : '▼'}
 		</span>
 	{/if}
-	<div class="w-32">
-		<MoneyInput
-			value={amount}
-			{onCommit}
-			ariaLabel="{item.name} amount"
-			toneClass={trend?.tone ?? ''}
-		/>
-	</div>
-	<button
-		type="button"
-		class="btn btn-square btn-ghost btn-sm"
-		aria-label="Remove {item.name}"
-		onclick={onRemove}
-	>
-		✕
-	</button>
+	{#if readonly}
+		<div class="num w-32 px-3 text-right text-sm font-medium {trend?.tone ?? ''}">
+			{formatCurrency(amount)}
+		</div>
+		<div class="w-8 shrink-0" aria-hidden="true"></div>
+	{:else}
+		<div class="w-32">
+			<MoneyInput
+				value={amount}
+				onCommit={(v) => onCommit?.(v)}
+				ariaLabel="{item.name} amount"
+				toneClass={trend?.tone ?? ''}
+			/>
+		</div>
+		<button
+			type="button"
+			class="btn btn-square btn-ghost btn-sm"
+			aria-label="Remove {item.name}"
+			onclick={() => onRemove?.()}
+		>
+			✕
+		</button>
+	{/if}
 </div>

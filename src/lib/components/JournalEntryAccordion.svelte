@@ -6,6 +6,7 @@
 	import JournalLineRow from '$lib/components/JournalLineRow.svelte';
 	import ItemPicker from '$lib/components/ItemPicker.svelte';
 	import { networthSeries } from '$lib/calc/networth';
+	import { containerParentIds } from '$lib/calc/groups';
 	import { formatCurrency } from '$lib/format';
 
 	interface Props {
@@ -101,12 +102,42 @@
 	const assetGroups = $derived(buildGroups('asset'));
 	const liabilityGroups = $derived(buildGroups('liability'));
 
+	// A group with children is a container: its value is the sum of its children.
+	function childTotal(group: Group): number {
+		return group.children.reduce((sum, c) => sum + c.line.amount, 0);
+	}
+
+	// Prior total for trend colouring — undefined when no child had a prior amount.
+	function priorChildTotal(group: Group): number | undefined {
+		const vals = group.children
+			.map((c) => priorAmountByItem.get(c.line.itemId))
+			.filter((v): v is number => v !== undefined);
+		return vals.length ? vals.reduce((sum, v) => sum + v, 0) : undefined;
+	}
+
+	// Replace each container parent's amount with the sum of its children before
+	// persisting, so the stored value matches what's shown and stays self-consistent.
+	function normalizedLines(): JournalLine[] {
+		const containers = containerParentIds(lines, $allItems);
+		if (containers.size === 0) return lines;
+		const totals: Record<string, number> = {};
+		for (const l of lines) {
+			const parentId = itemsById.get(l.itemId)?.parentId;
+			if (parentId && containers.has(parentId)) {
+				totals[parentId] = (totals[parentId] ?? 0) + l.amount;
+			}
+		}
+		return lines.map((l) =>
+			containers.has(l.itemId) ? { ...l, amount: totals[l.itemId] ?? 0 } : l
+		);
+	}
+
 	// Serialize writes so two rapid persists (e.g. pickItem then blur-commit) can't
 	// race each other and leave the DB with the earlier snapshot.
 	let persistQueue: Promise<unknown> = Promise.resolve();
 
 	function persist(): Promise<void> {
-		const snapshot = lines.map((l) => ({ ...l }));
+		const snapshot = normalizedLines().map((l) => ({ ...l }));
 		const noteSnapshot = notes.trim() || undefined;
 		const next = persistQueue.then(async () => {
 			await upsertEntry(entry.date, snapshot, noteSnapshot);
@@ -166,7 +197,14 @@
 
 		{#each groups as group (group.key)}
 			<div class="mb-2">
-				{#if group.parentLine?.item}
+				{#if group.children.length > 0 && group.parent}
+					<JournalLineRow
+						item={group.parent}
+						amount={childTotal(group)}
+						priorAmount={priorChildTotal(group)}
+						readonly
+					/>
+				{:else if group.parentLine?.item}
 					<JournalLineRow
 						item={group.parentLine.item}
 						amount={group.parentLine.line.amount}
