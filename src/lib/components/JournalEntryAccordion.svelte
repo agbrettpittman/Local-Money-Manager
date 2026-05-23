@@ -15,6 +15,7 @@
 	let { entry, open = $bindable() }: Props = $props();
 
 	let lines = $state<JournalLine[]>([]);
+	let notes = $state('');
 	let savedAt = $state<Date | null>(null);
 	let pickerState = $state<{ kind: LineKind; parentId?: string } | null>(null);
 
@@ -23,6 +24,7 @@
 	$effect(() => {
 		if (entry.id !== lastEntryId) {
 			lines = entry.lines.map((l) => ({ ...l }));
+			notes = entry.notes ?? '';
 			lastEntryId = entry.id;
 		}
 	});
@@ -91,8 +93,9 @@
 
 	function persist(): Promise<void> {
 		const snapshot = lines.map((l) => ({ ...l }));
+		const noteSnapshot = notes.trim() || undefined;
 		const next = persistQueue.then(async () => {
-			await upsertEntry(entry.date, snapshot);
+			await upsertEntry(entry.date, snapshot, noteSnapshot);
 			savedAt = new Date();
 		});
 		persistQueue = next.catch((err) => {
@@ -104,6 +107,10 @@
 	function commitAmount(itemId: string, amount: number) {
 		lines = lines.map((l) => (l.itemId === itemId ? { ...l, amount } : l));
 		void persist();
+	}
+
+	function commitNotes() {
+		if ((notes.trim() || undefined) !== (entry.notes ?? undefined)) void persist();
 	}
 
 	function removeLine(itemId: string) {
@@ -210,7 +217,27 @@
 	<input type="checkbox" bind:checked={open} aria-label="Toggle entry for {entry.date}" />
 	<div class="collapse-title flex items-center gap-3 pr-12">
 		<div class="flex-1">
-			<div class="num font-medium">{entry.date}</div>
+			<div class="num flex items-center gap-1.5 font-medium">
+				{entry.date}
+				{#if notes.trim()}
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="text-base-content/40"
+						aria-label="Has a comment"
+					>
+						<title>{notes}</title>
+						<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+					</svg>
+				{/if}
+			</div>
 			<div class="text-xs text-base-content/60">
 				{lines.length} item{lines.length === 1 ? '' : 's'}
 			</div>
@@ -251,6 +278,18 @@
 		{/if}
 
 		<div class="grid gap-3 md:grid-cols-2">
+			<div class="rounded-box bg-base-200 p-3 md:col-span-2">
+				<header class="mb-2 flex items-center justify-between">
+					<strong>Comment</strong>
+				</header>
+				<textarea
+					class="textarea-bordered textarea w-full bg-base-100 textarea-sm"
+					rows="2"
+					placeholder="Add a note about this entry…"
+					bind:value={notes}
+					onblur={commitNotes}
+				></textarea>
+			</div>
 			{@render section('asset', assetGroups, assetTotal)}
 			{@render section('liability', liabilityGroups, liabilityTotal)}
 		</div>

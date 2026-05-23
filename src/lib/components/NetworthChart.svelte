@@ -66,8 +66,30 @@
 
 	const itemsById = $derived(new Map(items.map((i) => [i.id, i])));
 
+	// Sorted once at component scope so both the datasets and the tooltip (which
+	// looks up a hovered point's comment by dataIndex) share the same ordering.
+	const sortedEntries = $derived([...entries].sort((a, b) => a.date.localeCompare(b.date)));
+
+	// Wrap a comment to a sensible width so long notes don't blow out the tooltip.
+	function wrap(text: string, width = 48): string[] {
+		const out: string[] = [];
+		for (const paragraph of text.split('\n')) {
+			let line = '';
+			for (const word of paragraph.split(/\s+/)) {
+				if (line && (line + ' ' + word).length > width) {
+					out.push(line);
+					line = word;
+				} else {
+					line = line ? `${line} ${word}` : word;
+				}
+			}
+			out.push(line);
+		}
+		return out;
+	}
+
 	const chartData = $derived.by(() => {
-		const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+		const sorted = sortedEntries;
 		const labels = sorted.map((e) => formatDateLabel(e.date));
 
 		if (mode === 'net') {
@@ -174,9 +196,18 @@
 				callbacks: {
 					label: (ctx) => `${ctx.dataset.label ?? ''}: ${formatCurrency(ctx.parsed.y ?? 0)}`,
 					footer: (items) => {
-						if (mode === 'net') return '';
-						const total = items.reduce((s, i) => s + (i.parsed.y ?? 0), 0);
-						return `Total: ${formatCurrency(total)}`;
+						const idx = items[0]?.dataIndex;
+						const note = idx == null ? undefined : sortedEntries[idx]?.notes?.trim();
+						const lines: string[] = [];
+						if (mode !== 'net') {
+							const total = items.reduce((s, i) => s + (i.parsed.y ?? 0), 0);
+							lines.push(`Total: ${formatCurrency(total)}`);
+						}
+						if (note) {
+							if (lines.length) lines.push('');
+							lines.push(...wrap(note));
+						}
+						return lines;
 					}
 				}
 			}
