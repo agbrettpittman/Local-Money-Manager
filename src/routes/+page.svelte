@@ -2,11 +2,14 @@
 	import { entriesByDate } from '$lib/stores/entries';
 	import { allItems } from '$lib/stores/items';
 	import NetworthChart from '$lib/components/NetworthChart.svelte';
+	import LatestEntryCard from '$lib/components/LatestEntryCard.svelte';
 	import ModeToggle, { type ChartMode } from '$lib/components/ModeToggle.svelte';
 
 	let mode = $state<ChartMode>('net');
 
 	const hasData = $derived($entriesByDate.length > 0);
+	const latestEntry = $derived($entriesByDate.at(-1));
+	const priorEntry = $derived($entriesByDate.at(-2));
 </script>
 
 <header class="flex flex-wrap items-end justify-between gap-3">
@@ -27,6 +30,9 @@
 			<NetworthChart {mode} entries={$entriesByDate} items={$allItems} />
 		</div>
 	</div>
+	{#if latestEntry}
+		<LatestEntryCard entry={latestEntry} prior={priorEntry} items={$allItems} />
+	{/if}
 {:else}
 	<div class="card border-2 border-dashed border-base-300 bg-base-100">
 		<div class="card-body items-start gap-3">

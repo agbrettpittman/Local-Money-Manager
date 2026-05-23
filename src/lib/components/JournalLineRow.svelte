@@ -8,13 +8,23 @@
 		amount: number;
 		/** Same item's amount in the previous journal entry, if any, for trend colouring. */
 		priorAmount?: number;
-		/** Auto-calculated rows (group totals) render the value as static text — no input, no remove. */
+		/** Render the value as static text — no input, no remove (e.g. group totals or a read-only view). */
 		readonly?: boolean;
+		/** Mark the value as auto-calculated from child items (shows an "(auto)" hint). */
+		auto?: boolean;
 		onCommit?: (amount: number) => void;
 		onRemove?: () => void;
 	}
 
-	let { item, amount, priorAmount, readonly = false, onCommit, onRemove }: Props = $props();
+	let {
+		item,
+		amount,
+		priorAmount,
+		readonly = false,
+		auto = false,
+		onCommit,
+		onRemove
+	}: Props = $props();
 
 	// Colour the value relative to the prior entry: better for net worth is green.
 	// For assets that means a higher value; for liabilities, a lower one.
@@ -34,7 +44,7 @@
 <div class="flex items-center gap-2 py-1">
 	<span class="flex-1 truncate text-sm">
 		{item.name}
-		{#if readonly}
+		{#if auto}
 			<span class="ml-1 text-xs text-base-content/40" title="Auto-calculated from the items below"
 				>(auto)</span
 			>

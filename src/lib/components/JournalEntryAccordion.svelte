@@ -6,7 +6,13 @@
 	import JournalLineRow from '$lib/components/JournalLineRow.svelte';
 	import ItemPicker from '$lib/components/ItemPicker.svelte';
 	import { networthSeries } from '$lib/calc/networth';
-	import { containerParentIds } from '$lib/calc/groups';
+	import {
+		buildGroups,
+		childTotal,
+		containerParentIds,
+		priorChildTotal,
+		type Group
+	} from '$lib/calc/groups';
 	import { formatCurrency } from '$lib/format';
 
 	interface Props {
@@ -32,7 +38,6 @@
 	});
 
 	const itemsById = $derived(new Map($allItems.map((i) => [i.id, i])));
-	const linesWithItems = $derived(lines.map((l) => ({ line: l, item: itemsById.get(l.itemId) })));
 
 	// The most recent entry dated before this one — used to colour each line by trend.
 	const priorEntry = $derived.by(() => {
@@ -53,67 +58,8 @@
 	const liabilityTotal = $derived(headerPoint?.liabilityTotal ?? 0);
 	const netWorth = $derived(headerPoint?.value ?? 0);
 
-	type LineWithItem = { line: JournalLine; item: Item | undefined };
-	type Group = {
-		key: string;
-		parent: Item | null;
-		parentLine: LineWithItem | undefined;
-		children: LineWithItem[];
-	};
-
-	function buildGroups(kind: LineKind): Group[] {
-		const filtered = linesWithItems.filter((p) => p.item?.kind === kind);
-		const groupsByKey: Record<string, Group> = {};
-
-		for (const lwi of filtered) {
-			const item = lwi.item!;
-			if (item.parentId) {
-				const key = item.parentId;
-				if (!groupsByKey[key]) {
-					groupsByKey[key] = {
-						key,
-						parent: itemsById.get(key) ?? null,
-						parentLine: undefined,
-						children: []
-					};
-				}
-				groupsByKey[key].children.push(lwi);
-			} else {
-				const key = item.id;
-				if (!groupsByKey[key]) {
-					groupsByKey[key] = { key, parent: item, parentLine: lwi, children: [] };
-				} else {
-					groupsByKey[key].parentLine = lwi;
-					if (!groupsByKey[key].parent) groupsByKey[key].parent = item;
-				}
-			}
-		}
-
-		return Object.values(groupsByKey)
-			.map((g) => ({
-				...g,
-				children: g.children
-					.slice()
-					.sort((a, b) => (a.item?.name ?? '').localeCompare(b.item?.name ?? ''))
-			}))
-			.sort((a, b) => (a.parent?.name ?? '~').localeCompare(b.parent?.name ?? '~'));
-	}
-
-	const assetGroups = $derived(buildGroups('asset'));
-	const liabilityGroups = $derived(buildGroups('liability'));
-
-	// A group with children is a container: its value is the sum of its children.
-	function childTotal(group: Group): number {
-		return group.children.reduce((sum, c) => sum + c.line.amount, 0);
-	}
-
-	// Prior total for trend colouring — undefined when no child had a prior amount.
-	function priorChildTotal(group: Group): number | undefined {
-		const vals = group.children
-			.map((c) => priorAmountByItem.get(c.line.itemId))
-			.filter((v): v is number => v !== undefined);
-		return vals.length ? vals.reduce((sum, v) => sum + v, 0) : undefined;
-	}
+	const assetGroups = $derived(buildGroups(lines, $allItems, 'asset'));
+	const liabilityGroups = $derived(buildGroups(lines, $allItems, 'liability'));
 
 	// Replace each container parent's amount with the sum of its children before
 	// persisting, so the stored value matches what's shown and stays self-consistent.
@@ -201,8 +147,9 @@
 					<JournalLineRow
 						item={group.parent}
 						amount={childTotal(group)}
-						priorAmount={priorChildTotal(group)}
+						priorAmount={priorChildTotal(group, priorAmountByItem)}
 						readonly
+						auto
 					/>
 				{:else if group.parentLine?.item}
 					<JournalLineRow
