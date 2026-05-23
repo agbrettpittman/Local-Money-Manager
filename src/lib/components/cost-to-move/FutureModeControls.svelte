@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { setFutureField } from '$lib/cost-to-move/actions';
 	import { calcDurationMonths } from '$lib/cost-to-move/calc';
+	import { formatDuration } from '$lib/format';
 	import type { CostToMoveState } from '$lib/db/types';
 
 	interface Props {
@@ -11,14 +12,7 @@
 	const months = $derived(calcDurationMonths(state));
 	const durationLabel = $derived.by(() => {
 		if (!state.futureMode.enabled) return '';
-		if (months > 0) {
-			const yrs = Math.floor(months / 12);
-			const mos = months % 12;
-			const parts: string[] = [];
-			if (yrs > 0) parts.push(`${yrs}y`);
-			if (mos > 0 || yrs === 0) parts.push(`${mos}m`);
-			return parts.join(' ');
-		}
+		if (months > 0) return formatDuration(months);
 		return state.futureMode.moveDate ? 'Pick a future date' : '';
 	});
 </script>

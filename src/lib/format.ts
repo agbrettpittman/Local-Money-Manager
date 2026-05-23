@@ -23,6 +23,15 @@ export function formatWithCommas(value: number): string {
 	return numberFormatter.format(value);
 }
 
+export function formatDuration(months: number): string {
+	const yrs = Math.floor(months / 12);
+	const mos = months % 12;
+	const parts: string[] = [];
+	if (yrs > 0) parts.push(`${yrs}y`);
+	if (mos > 0 || yrs === 0) parts.push(`${mos}m`);
+	return parts.join(' ');
+}
+
 export function parseNumberInput(raw: string): number {
 	if (!raw) return 0;
 	const n = parseFloat(raw.replace(/,/g, ''));
