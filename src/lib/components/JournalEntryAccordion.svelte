@@ -58,6 +58,10 @@
 	const liabilityTotal = $derived(headerPoint?.liabilityTotal ?? 0);
 	const netWorth = $derived(headerPoint?.value ?? 0);
 
+	// Net change versus the prior entry; 0 when there is no prior entry.
+	const priorPoint = $derived(priorEntry ? networthSeries([priorEntry], $allItems)[0] : undefined);
+	const netChange = $derived(priorPoint ? netWorth - (priorPoint.value ?? 0) : 0);
+
 	const assetGroups = $derived(buildGroups(lines, $allItems, 'asset'));
 	const liabilityGroups = $derived(buildGroups(lines, $allItems, 'liability'));
 
@@ -255,6 +259,16 @@
 			<div>
 				<div class="text-base-content/50 uppercase">Net</div>
 				<div class="num font-semibold">{formatCurrency(netWorth)}</div>
+			</div>
+			<div>
+				<div class="text-base-content/50 uppercase">Change</div>
+				<div
+					class="num font-semibold"
+					class:text-success={netChange > 0}
+					class:text-error={netChange < 0}
+				>
+					{netChange > 0 ? '+' : ''}{formatCurrency(netChange)}
+				</div>
 			</div>
 		</div>
 	</div>
