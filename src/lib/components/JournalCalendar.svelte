@@ -21,7 +21,10 @@
 	}
 
 	const monthLabel = $derived(
-		new Date(viewYear, viewMonth, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+		new Date(viewYear, viewMonth, 1).toLocaleDateString('en-US', {
+			month: 'short',
+			year: 'numeric'
+		})
 	);
 
 	const cells = $derived.by(() => {

@@ -31,16 +31,16 @@ In dev mode, the **Data ▾** menu in the navbar has a "Load demo data" option t
 
 ## Scripts
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the dev server |
-| `npm run build` | Build the static site to `build/` |
-| `npm run preview` | Preview the production build |
-| `npm run check` | Type-check with `svelte-check` |
-| `npm run lint` | Prettier + ESLint |
-| `npm run format` | Apply Prettier |
-| `npm test` | Run unit tests once |
-| `npm run test:unit` | Run unit tests in watch mode |
+| Command             | Purpose                           |
+| ------------------- | --------------------------------- |
+| `npm run dev`       | Start the dev server              |
+| `npm run build`     | Build the static site to `build/` |
+| `npm run preview`   | Preview the production build      |
+| `npm run check`     | Type-check with `svelte-check`    |
+| `npm run lint`      | Prettier + ESLint                 |
+| `npm run format`    | Apply Prettier                    |
+| `npm test`          | Run unit tests once               |
+| `npm run test:unit` | Run unit tests in watch mode      |
 
 ## Deploying
 

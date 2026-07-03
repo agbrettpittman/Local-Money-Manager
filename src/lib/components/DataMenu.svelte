@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { clearAllData, exportAll, importAll } from '$lib/db/repo';
+	import { clearAllData, importAll } from '$lib/db/repo';
+	import { downloadBackup } from '$lib/backup/backup';
 	import { exportEnvelopeSchema } from '$lib/db/exportSchema';
 	import { loadDemoData } from '$lib/dev/seed';
 	import type { ExportEnvelope } from '$lib/db/types';
@@ -16,27 +17,6 @@
 	let clearDialog: HTMLDialogElement | null = $state(null);
 
 	const clearMatches = $derived(clearConfirmText === CLEAR_PHRASE);
-
-	function todayIsoSlug(): string {
-		const d = new Date();
-		const y = d.getFullYear();
-		const m = String(d.getMonth() + 1).padStart(2, '0');
-		const day = String(d.getDate()).padStart(2, '0');
-		return `${y}-${m}-${day}`;
-	}
-
-	async function handleExport() {
-		const data = await exportAll();
-		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `local-money-manager-${todayIsoSlug()}.json`;
-		document.body.appendChild(a);
-		a.click();
-		a.remove();
-		URL.revokeObjectURL(url);
-	}
 
 	function handleImportClick() {
 		importError = null;
@@ -103,7 +83,7 @@
 		tabindex="0"
 		class="dropdown-content menu z-30 mt-1 w-52 menu-sm rounded-box bg-base-100 p-1 shadow-lg"
 	>
-		<li><button type="button" onclick={handleExport}>Export to JSON</button></li>
+		<li><button type="button" onclick={downloadBackup}>Export to JSON</button></li>
 		<li><button type="button" onclick={handleImportClick}>Import from JSON</button></li>
 		{#if isDev}
 			<li>

@@ -49,6 +49,8 @@
 	const itemsById = $derived(new Map($allItems.map((i) => [i.id, i])));
 
 	const childCountById = $derived.by(() => {
+		// Transient local map fully built within this derived; not reactive state.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const counts = new Map<string, number>();
 		for (const i of $allItems) {
 			if (i.parentId) counts.set(i.parentId, (counts.get(i.parentId) ?? 0) + 1);
