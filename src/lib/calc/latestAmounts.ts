@@ -14,3 +14,12 @@ export function latestAmountByItem(entries: JournalEntry[]): Record<string, numb
 	}
 	return latest;
 }
+
+/**
+ * Same as `latestAmountByItem`, but only considering entries dated on or before
+ * `date` — the amounts as they stood at that point in history. Items not logged
+ * by then carry their last value before the cutoff, or are absent entirely.
+ */
+export function amountsAsOf(entries: JournalEntry[], date: string): Record<string, number> {
+	return latestAmountByItem(entries.filter((e) => e.date <= date));
+}

@@ -8,7 +8,9 @@
 	const isDev = import.meta.env.DEV;
 	const CLEAR_PHRASE = 'Clear All Data';
 
-	let pendingImport = $state<ExportEnvelope | null>(null);
+	// $state.raw: a deep $state proxy can't be structured-cloned into IndexedDB
+	// (DataCloneError). Only whole-object assignment happens here, so raw is enough.
+	let pendingImport = $state.raw<ExportEnvelope | null>(null);
 	let importError = $state<string | null>(null);
 	let clearConfirmText = $state('');
 	let fileInput: HTMLInputElement | null = $state(null);
@@ -44,7 +46,15 @@
 
 	async function confirmImport() {
 		if (!pendingImport) return;
-		await importAll(pendingImport);
+		try {
+			await importAll(pendingImport);
+		} catch (err) {
+			importError = err instanceof Error ? err.message : 'Import failed';
+			confirmDialog?.close();
+			pendingImport = null;
+			errorDialog?.showModal();
+			return;
+		}
 		pendingImport = null;
 		confirmDialog?.close();
 	}

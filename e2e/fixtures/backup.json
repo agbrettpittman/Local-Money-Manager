@@ -1,0 +1,308 @@
+{
+	"version": 1,
+	"exportedAt": "2026-09-03T17:23:08.329Z",
+	"items": [
+		{
+			"id": "1b4664f9-2d2f-436b-9ba7-7a38be27c101",
+			"name": "House Savings",
+			"kind": "asset",
+			"createdAt": "2026-05-02T14:31:22.142Z",
+			"parentId": "d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a"
+		},
+		{
+			"id": "41be03e9-9d76-4cf0-8be0-fef53d2c7168",
+			"name": "Personal Portfolio",
+			"kind": "asset",
+			"createdAt": "2026-05-02T14:32:57.002Z"
+		},
+		{
+			"id": "4cd26d9a-3ca5-4dc0-b9b2-1cc5493edef5",
+			"name": "Checking",
+			"kind": "asset",
+			"createdAt": "2026-05-02T14:09:16.969Z",
+			"parentId": "d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a"
+		},
+		{
+			"id": "6718af23-e490-4682-9d15-8c4e3dab5064",
+			"name": "100 Example St Mortgage",
+			"kind": "liability",
+			"homeId": "119422c5-afa9-48e0-a31a-c8bbd6abadd8",
+			"createdAt": "2026-05-02T15:02:10.872Z"
+		},
+		{
+			"id": "7822ee43-378a-46c1-861d-4838b592f813",
+			"name": "Vacation Savings",
+			"kind": "asset",
+			"createdAt": "2026-05-02T14:31:36.175Z",
+			"parentId": "d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a"
+		},
+		{
+			"id": "94ef4c42-02b7-488a-9d17-db6b24c2daea",
+			"name": "Car Savings",
+			"kind": "asset",
+			"createdAt": "2026-05-02T14:30:54.082Z",
+			"parentId": "d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a"
+		},
+		{
+			"id": "ad555d4d-140f-40a8-9e24-478ec45f67a2",
+			"name": "Investing Savings",
+			"kind": "asset",
+			"createdAt": "2026-05-02T14:31:59.335Z",
+			"parentId": "d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a"
+		},
+		{
+			"id": "b5fb6e38-835a-4a61-b7bf-a6bb9528e3a6",
+			"name": "401K",
+			"kind": "asset",
+			"createdAt": "2026-05-02T14:33:54.080Z"
+		},
+		{
+			"id": "c9156b9f-a821-45fb-937e-b4dda7b878e7",
+			"name": "100 Example St",
+			"kind": "asset",
+			"homeId": "119422c5-afa9-48e0-a31a-c8bbd6abadd8",
+			"createdAt": "2026-05-02T15:02:10.872Z"
+		},
+		{
+			"id": "d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a",
+			"name": "Bank",
+			"kind": "asset",
+			"createdAt": "2026-05-02T13:54:05.020Z"
+		},
+		{
+			"id": "d8adc86f-7b1a-45e5-b49c-77867405bd59",
+			"name": "European Cruise",
+			"kind": "asset",
+			"createdAt": "2026-05-02T14:12:31.070Z",
+			"parentId": "d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a"
+		}
+	],
+	"homes": [
+		{
+			"id": "119422c5-afa9-48e0-a31a-c8bbd6abadd8",
+			"name": "100 Example St",
+			"valueItemId": "c9156b9f-a821-45fb-937e-b4dda7b878e7",
+			"mortgageItemId": "6718af23-e490-4682-9d15-8c4e3dab5064",
+			"sellingCostPercent": 7,
+			"mortgageRate": 6.5,
+			"mortgageYears": 30,
+			"createdAt": "2026-05-02T15:02:10.872Z",
+			"mortgageStartDate": "2021-09-01"
+		}
+	],
+	"journalEntries": [
+		{
+			"id": "9014412a-a159-42a8-a456-b993b1461b49",
+			"date": "2026-05-02",
+			"lines": [
+				{
+					"itemId": "4cd26d9a-3ca5-4dc0-b9b2-1cc5493edef5",
+					"amount": 83000.0
+				},
+				{
+					"itemId": "d8adc86f-7b1a-45e5-b49c-77867405bd59",
+					"amount": 39000.0
+				},
+				{
+					"itemId": "94ef4c42-02b7-488a-9d17-db6b24c2daea",
+					"amount": 101500.0
+				},
+				{
+					"itemId": "1b4664f9-2d2f-436b-9ba7-7a38be27c101",
+					"amount": 167000.0
+				},
+				{
+					"itemId": "7822ee43-378a-46c1-861d-4838b592f813",
+					"amount": 12500.0
+				},
+				{
+					"itemId": "ad555d4d-140f-40a8-9e24-478ec45f67a2",
+					"amount": 19000.0
+				},
+				{
+					"itemId": "41be03e9-9d76-4cf0-8be0-fef53d2c7168",
+					"amount": 137500.0
+				},
+				{
+					"itemId": "b5fb6e38-835a-4a61-b7bf-a6bb9528e3a6",
+					"amount": 24500.0
+				},
+				{
+					"itemId": "c9156b9f-a821-45fb-937e-b4dda7b878e7",
+					"amount": 94000.0
+				},
+				{
+					"itemId": "6718af23-e490-4682-9d15-8c4e3dab5064",
+					"amount": 149500.0
+				}
+			],
+			"createdAt": "2026-05-02T14:19:24.653Z",
+			"updatedAt": "2026-05-02T15:04:14.498Z"
+		},
+		{
+			"id": "edca0495-3c4c-4fab-902f-5e82262e5cce",
+			"date": "2026-05-09",
+			"lines": [
+				{
+					"itemId": "c9156b9f-a821-45fb-937e-b4dda7b878e7",
+					"amount": 15000.0
+				},
+				{
+					"itemId": "6718af23-e490-4682-9d15-8c4e3dab5064",
+					"amount": 130000.0
+				},
+				{
+					"itemId": "b5fb6e38-835a-4a61-b7bf-a6bb9528e3a6",
+					"amount": 55000.0
+				},
+				{
+					"itemId": "d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a",
+					"amount": 10000.0
+				},
+				{
+					"itemId": "94ef4c42-02b7-488a-9d17-db6b24c2daea",
+					"amount": 22500.0
+				},
+				{
+					"itemId": "4cd26d9a-3ca5-4dc0-b9b2-1cc5493edef5",
+					"amount": 111500.0
+				},
+				{
+					"itemId": "d8adc86f-7b1a-45e5-b49c-77867405bd59",
+					"amount": 107500.0
+				},
+				{
+					"itemId": "1b4664f9-2d2f-436b-9ba7-7a38be27c101",
+					"amount": 18000.0
+				},
+				{
+					"itemId": "ad555d4d-140f-40a8-9e24-478ec45f67a2",
+					"amount": 62000.0
+				},
+				{
+					"itemId": "41be03e9-9d76-4cf0-8be0-fef53d2c7168",
+					"amount": 23500.0
+				},
+				{
+					"itemId": "7822ee43-378a-46c1-861d-4838b592f813",
+					"amount": 141500.0
+				}
+			],
+			"createdAt": "2026-05-09T11:34:41.879Z",
+			"updatedAt": "2026-05-09T11:39:09.288Z"
+		}
+	],
+	"costToMove": {
+		"id": "singleton",
+		"housePrice": 350000,
+		"interestRate": 6.5,
+		"loanYears": 30,
+		"propertyTaxRate": 0.75,
+		"monthlyInsurance": 200,
+		"assetSelections": {
+			"d4e1ba8b-7f07-4098-bb37-e8f8a16ec23a": {
+				"enabled": false,
+				"isInvestment": false,
+				"investmentConfig": {
+					"annualReturnRate": 7,
+					"contributionAmount": 0,
+					"contributionFrequency": "monthly"
+				}
+			},
+			"b5fb6e38-835a-4a61-b7bf-a6bb9528e3a6": {
+				"enabled": false,
+				"isInvestment": false,
+				"investmentConfig": {
+					"annualReturnRate": 7,
+					"contributionAmount": 0,
+					"contributionFrequency": "monthly"
+				}
+			},
+			"c9156b9f-a821-45fb-937e-b4dda7b878e7": {
+				"enabled": true,
+				"isInvestment": false,
+				"investmentConfig": {
+					"annualReturnRate": 7,
+					"contributionAmount": 0,
+					"contributionFrequency": "monthly"
+				}
+			},
+			"41be03e9-9d76-4cf0-8be0-fef53d2c7168": {
+				"enabled": true,
+				"isInvestment": true,
+				"investmentConfig": {
+					"annualReturnRate": 10,
+					"contributionAmount": 12000,
+					"contributionFrequency": "yearly"
+				}
+			}
+		},
+		"expenseSelections": {
+			"6718af23-e490-4682-9d15-8c4e3dab5064": {
+				"enabled": true,
+				"hasGrowth": false,
+				"growthConfig": {
+					"annualGrowthRate": 2,
+					"growthFrequency": "yearly"
+				}
+			}
+		},
+		"adHocExpenses": [
+			{
+				"id": "9214a65b-bd41-4ad0-a092-50a30ff2fa3a",
+				"name": "Living Expenses",
+				"amount": 10000,
+				"hasGrowth": false,
+				"growthConfig": {
+					"annualGrowthRate": 2,
+					"growthFrequency": "yearly"
+				}
+			}
+		],
+		"currentHomeExpenses": [
+			{
+				"id": "b2267543-2737-46f6-8fdf-70f61530d6d5",
+				"name": "Roof Repair",
+				"amount": 10000,
+				"hasGrowth": false,
+				"growthConfig": {
+					"annualGrowthRate": 2,
+					"growthFrequency": "yearly"
+				}
+			}
+		],
+		"futureMode": {
+			"enabled": true,
+			"moveDate": "2029-10-12",
+			"homePriceInflationRate": 3,
+			"currentHomeGrowthRate": 3
+		},
+		"futureOverrides": {
+			"housePrice": {
+				"futureValue": null,
+				"isOverridden": false
+			},
+			"interestRate": {
+				"futureValue": null,
+				"isOverridden": false
+			},
+			"loanYears": {
+				"futureValue": null,
+				"isOverridden": false
+			},
+			"propertyTaxRate": {
+				"futureValue": null,
+				"isOverridden": false
+			},
+			"monthlyInsurance": {
+				"futureValue": null,
+				"isOverridden": false
+			}
+		},
+		"homeSelections": {
+			"119422c5-afa9-48e0-a31a-c8bbd6abadd8": {
+				"enabled": true
+			}
+		}
+	}
+}
