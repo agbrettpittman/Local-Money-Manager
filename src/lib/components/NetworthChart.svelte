@@ -16,7 +16,7 @@
 	import type { Item, JournalEntry } from '$lib/db/types';
 	import { networthSeries } from '$lib/calc/networth';
 	import { stackedSeries } from '$lib/calc/stacked';
-	import { formatCurrency } from '$lib/format';
+	import { formatAxisTick, formatCurrency } from '$lib/format';
 
 	ChartJS.register(
 		CategoryScale,
@@ -216,11 +216,10 @@
 			y: {
 				stacked: mode !== 'net',
 				ticks: {
-					callback: (value) => {
+					callback: (value, index, ticks) => {
 						const v = typeof value === 'number' ? value : Number(value);
-						if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-						if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(0)}k`;
-						return `$${v}`;
+						const step = ticks.length > 1 ? ticks[1].value - ticks[0].value : 0;
+						return formatAxisTick(v, step);
 					}
 				}
 			}
