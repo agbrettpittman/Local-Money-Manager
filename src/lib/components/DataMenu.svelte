@@ -1,68 +1,17 @@
 <script lang="ts">
-	import { clearAllData, importAll } from '$lib/db/repo';
+	import { clearAllData } from '$lib/db/repo';
 	import { downloadBackup } from '$lib/backup/backup';
-	import { exportEnvelopeSchema } from '$lib/db/exportSchema';
 	import { loadDemoData } from '$lib/dev/seed';
-	import type { ExportEnvelope } from '$lib/db/types';
+	import ImportBackup from './ImportBackup.svelte';
 
 	const isDev = import.meta.env.DEV;
 	const CLEAR_PHRASE = 'Clear All Data';
 
-	// $state.raw: a deep $state proxy can't be structured-cloned into IndexedDB
-	// (DataCloneError). Only whole-object assignment happens here, so raw is enough.
-	let pendingImport = $state.raw<ExportEnvelope | null>(null);
-	let importError = $state<string | null>(null);
 	let clearConfirmText = $state('');
-	let fileInput: HTMLInputElement | null = $state(null);
-	let confirmDialog: HTMLDialogElement | null = $state(null);
-	let errorDialog: HTMLDialogElement | null = $state(null);
 	let clearDialog: HTMLDialogElement | null = $state(null);
+	let importer: ImportBackup | null = $state(null);
 
 	const clearMatches = $derived(clearConfirmText === CLEAR_PHRASE);
-
-	function handleImportClick() {
-		importError = null;
-		fileInput?.click();
-	}
-
-	async function handleFile(e: Event) {
-		const input = e.target as HTMLInputElement;
-		const file = input.files?.[0];
-		input.value = '';
-		if (!file) return;
-		try {
-			const text = await file.text();
-			const json = JSON.parse(text);
-			pendingImport = exportEnvelopeSchema.parse(json);
-		} catch (err) {
-			importError = err instanceof Error ? err.message : 'Invalid file';
-			errorDialog?.showModal();
-		}
-	}
-
-	$effect(() => {
-		if (pendingImport && confirmDialog && !confirmDialog.open) confirmDialog.showModal();
-	});
-
-	async function confirmImport() {
-		if (!pendingImport) return;
-		try {
-			await importAll(pendingImport);
-		} catch (err) {
-			importError = err instanceof Error ? err.message : 'Import failed';
-			confirmDialog?.close();
-			pendingImport = null;
-			errorDialog?.showModal();
-			return;
-		}
-		pendingImport = null;
-		confirmDialog?.close();
-	}
-
-	function cancelImport() {
-		pendingImport = null;
-		confirmDialog?.close();
-	}
 
 	function openClearDialog() {
 		clearConfirmText = '';
@@ -94,7 +43,7 @@
 		class="dropdown-content menu z-30 mt-1 w-52 menu-sm rounded-box bg-base-100 p-1 shadow-lg"
 	>
 		<li><button type="button" onclick={downloadBackup}>Export to JSON</button></li>
-		<li><button type="button" onclick={handleImportClick}>Import from JSON</button></li>
+		<li><button type="button" onclick={() => importer?.open()}>Import from JSON</button></li>
 		{#if isDev}
 			<li>
 				<button type="button" onclick={handleLoadDemo}>
@@ -109,52 +58,7 @@
 	</ul>
 </div>
 
-<input
-	bind:this={fileInput}
-	type="file"
-	accept="application/json"
-	class="hidden"
-	onchange={handleFile}
-/>
-
-<!-- Import confirmation -->
-<dialog bind:this={confirmDialog} class="modal">
-	{#if pendingImport}
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Replace all data?</h3>
-			<p class="py-2 text-sm">
-				This will <strong>replace all existing data</strong> with the contents of the file. Export your
-				current data first if you want a backup.
-			</p>
-			<ul class="list-inside list-disc rounded-box bg-base-200 p-3 text-sm">
-				<li>{pendingImport.items.length} items</li>
-				<li>{pendingImport.journalEntries.length} journal entries</li>
-				<li>Cost To Move state: {pendingImport.costToMove ? 'included' : 'none'}</li>
-				<li class="text-xs text-base-content/60">Exported: {pendingImport.exportedAt}</li>
-			</ul>
-			<div class="modal-action">
-				<button type="button" class="btn btn-ghost" onclick={cancelImport}>Cancel</button>
-				<button type="button" class="btn btn-error" onclick={confirmImport}>Replace</button>
-			</div>
-		</div>
-	{/if}
-	<form method="dialog" class="modal-backdrop"><button onclick={cancelImport}>close</button></form>
-</dialog>
-
-<!-- Import error -->
-<dialog bind:this={errorDialog} class="modal">
-	<div class="modal-box">
-		<h3 class="text-lg font-bold">Import failed</h3>
-		<pre
-			class="mt-2 max-h-48 overflow-y-auto rounded-box bg-base-200 p-3 text-xs whitespace-pre-wrap">{importError}</pre>
-		<div class="modal-action">
-			<form method="dialog">
-				<button class="btn">Dismiss</button>
-			</form>
-		</div>
-	</div>
-	<form method="dialog" class="modal-backdrop"><button>close</button></form>
-</dialog>
+<ImportBackup bind:this={importer} />
 
 <!-- Clear all data confirmation -->
 <dialog bind:this={clearDialog} class="modal">

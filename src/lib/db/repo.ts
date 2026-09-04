@@ -10,6 +10,7 @@ import type {
 	LineKind
 } from './types';
 import { defaultCostToMoveState } from '$lib/cost-to-move/defaults';
+import { planMerge, type MergeSummary } from './merge';
 
 const nowIso = () => new Date().toISOString();
 
@@ -354,15 +355,44 @@ export async function clearAllData(): Promise<void> {
 	});
 }
 
-export async function importAll(data: ExportEnvelope): Promise<void> {
+/** 'replace' discards everything stored; 'merge' keeps both sides (see planMerge). */
+export type ImportMode = 'replace' | 'merge';
+
+async function snapshot() {
+	return {
+		items: await db.items.toArray(),
+		homes: await db.homes.toArray(),
+		journalEntries: await db.journalEntries.toArray(),
+		costToMove: (await db.costToMove.get('singleton')) ?? null
+	};
+}
+
+/** What a merge of `data` would do, for confirmation UI. Read-only. */
+export async function previewMerge(data: ExportEnvelope): Promise<MergeSummary> {
+	return planMerge(await snapshot(), normalize(data)).summary;
+}
+
+function normalize(data: ExportEnvelope) {
+	return {
+		items: data.items,
+		homes: data.homes ?? [],
+		journalEntries: data.journalEntries,
+		costToMove: data.costToMove
+	};
+}
+
+export async function importAll(data: ExportEnvelope, mode: ImportMode = 'replace'): Promise<void> {
 	await db.transaction('rw', [db.items, db.homes, db.journalEntries, db.costToMove], async () => {
+		// Read inside the transaction so the merge can't be computed against stale data.
+		const next = mode === 'merge' ? planMerge(await snapshot(), normalize(data)) : normalize(data);
+
 		await db.items.clear();
 		await db.homes.clear();
 		await db.journalEntries.clear();
 		await db.costToMove.clear();
-		if (data.items.length) await db.items.bulkAdd(data.items);
-		if (data.homes?.length) await db.homes.bulkAdd(data.homes);
-		if (data.journalEntries.length) await db.journalEntries.bulkAdd(data.journalEntries);
-		if (data.costToMove) await db.costToMove.put({ ...data.costToMove, id: 'singleton' });
+		if (next.items.length) await db.items.bulkAdd(next.items);
+		if (next.homes.length) await db.homes.bulkAdd(next.homes);
+		if (next.journalEntries.length) await db.journalEntries.bulkAdd(next.journalEntries);
+		if (next.costToMove) await db.costToMove.put({ ...next.costToMove, id: 'singleton' });
 	});
 }
