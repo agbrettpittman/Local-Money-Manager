@@ -89,14 +89,14 @@ test('merging a backup that is already loaded changes nothing', async ({ page })
 test('a fresh profile offers to import a backup', async ({ page }) => {
 	await page.goto('/');
 
-	await expect(page.getByText('Nothing stored in this browser yet')).toBeVisible();
+	await expect(page.getByText('Nothing saved yet')).toBeVisible();
 	await page.getByRole('button', { name: 'Import a backup' }).click();
 	await page.setInputFiles('input[type=file]', fixture);
 
 	await expect(page.getByText('Import backup')).toBeVisible();
 	await page.getByRole('button', { name: 'Merge' }).click();
 
-	await expect(page.getByText('Nothing stored in this browser yet')).toBeHidden();
+	await expect(page.getByText('Nothing saved yet')).toBeHidden();
 	await expect
 		.poll(() => storedCounts(page))
 		.toEqual({

@@ -9,6 +9,7 @@
 		downloadBackup,
 		REMINDER_AFTER_DAYS
 	} from '$lib/backup/backup';
+	import { isDesktop } from '$lib/platform';
 
 	const DISMISS_DAYS = 7;
 	const URGENT_AFTER_DAYS = 45;
@@ -30,15 +31,27 @@
 </script>
 
 {#if show}
-	<div class="alert {urgent ? 'alert-error' : 'alert-warning'}" role="status">
-		<div class="text-sm">
+	<!-- flex overrides daisyUI's grid: its auto columns let the buttons overflow the
+	     alert's padding box once the message wraps. -->
+	<div
+		class="alert {urgent
+			? 'alert-error'
+			: 'alert-warning'} flex flex-wrap items-start justify-between gap-3"
+		role="status"
+	>
+		<div class="min-w-0 flex-1 text-sm">
 			<p class="font-semibold">{message}</p>
 			<p class="opacity-90">
-				This data exists only in this browser. Switching browsers, resetting your profile, or
-				clearing site data erases it with no way back — exporting is the only copy that survives.
+				{#if isDesktop}
+					Your data is one file on this computer. If that file is deleted or this machine fails,
+					it's gone with no way back — an exported backup is the only copy that survives.
+				{:else}
+					This data exists only in this browser. Switching browsers, resetting your profile, or
+					clearing site data erases it with no way back — exporting is the only copy that survives.
+				{/if}
 			</p>
 		</div>
-		<div class="flex gap-2">
+		<div class="flex shrink-0 gap-2">
 			<button type="button" class="btn btn-sm" onclick={() => downloadBackup()}>Export now</button>
 			<button
 				type="button"

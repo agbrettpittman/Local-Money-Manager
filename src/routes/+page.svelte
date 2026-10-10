@@ -11,12 +11,13 @@
 	import ResultsCards from '$lib/components/cost-to-move/ResultsCards.svelte';
 	import ModeToggle, { type ChartMode } from '$lib/components/ModeToggle.svelte';
 	import ImportBackup from '$lib/components/ImportBackup.svelte';
+	import { isDesktop } from '$lib/platform';
 
 	let mode = $state<ChartMode>('net');
 	let importer: ImportBackup | null = $state(null);
 
 	const hasData = $derived($entriesByDate.length > 0);
-	// Nothing at all stored yet — most likely a browser this app has never run in.
+	// Nothing at all stored yet — a first run on this machine or in this browser.
 	const isFreshProfile = $derived(
 		$allEntries.length === 0 && $allItems.length === 0 && $allHomes.length === 0
 	);
@@ -88,11 +89,16 @@
 {:else if isFreshProfile}
 	<div class="card border-2 border-dashed border-base-300 bg-base-100">
 		<div class="card-body items-start gap-3">
-			<h2 class="card-title text-base">Nothing stored in this browser yet</h2>
+			<h2 class="card-title text-base">Nothing saved yet</h2>
 			<p class="text-sm text-base-content/70">
-				Your data lives in whichever browser you entered it in — it doesn't follow you to a new one.
-				If you've used Local Money Manager somewhere else, export a backup from there and bring it
-				over.
+				{#if isDesktop}
+					Your data is saved to a file on this computer — it doesn't follow you to another one. If
+					you've used Local Money Manager elsewhere, export a backup there and import it here.
+				{:else}
+					Your data lives in whichever browser you entered it in — it doesn't follow you to a new
+					one. If you've used Local Money Manager somewhere else, export a backup from there and
+					bring it over.
+				{/if}
 			</p>
 			<div class="flex flex-wrap gap-2 pt-1">
 				<a href="/journal" class="btn btn-sm btn-primary">Start your first entry →</a>
