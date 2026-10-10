@@ -8,6 +8,12 @@ export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version)
 	},
+	server: {
+		// On Windows, cargo's linker holds a lock on the .exe while writing it, and the
+		// watcher dies with EBUSY mid-build — taking `tauri dev` down with it. Nothing
+		// under src-tauri is served to the frontend anyway.
+		watch: { ignored: ['**/src-tauri/**'] }
+	},
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
