@@ -9,6 +9,10 @@ node_modules
 /.svelte-kit
 /build
 
+# Tauri (both eslint and prettier read this root file, not src-tauri/.gitignore)
+/src-tauri/target
+/src-tauri/gen
+
 # Playwright
 /test-results
 /playwright-report
