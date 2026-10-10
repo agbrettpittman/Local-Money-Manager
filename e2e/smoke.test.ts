@@ -19,13 +19,15 @@ for (const route of routes) {
 	});
 }
 
-test('shows the blocked-storage guard when IndexedDB is unavailable', async ({ page }) => {
+test('refuses to start when stored data cannot be read', async ({ page }) => {
+	// Corrupt storage must not fall through to an empty app — that would overwrite
+	// whatever was really there on the next save.
 	await page.addInitScript(() => {
-		Object.defineProperty(window, 'indexedDB', { get: () => undefined });
+		localStorage.setItem('lmm:data', '{ not valid json');
 	});
 
 	await page.goto('/');
 
-	await expect(page.getByText(/local storage is blocked/i)).toBeVisible();
+	await expect(page.getByText(/could not load your data/i)).toBeVisible();
 	await expect(page.locator('.navbar')).toHaveCount(0);
 });

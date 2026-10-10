@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
-import { db } from './schema';
+import { getSnapshot, mutate } from './store';
+import { toEnvelope, type Snapshot } from './snapshot';
 import type {
 	CostToMoveState,
 	ExportEnvelope,
@@ -17,48 +18,51 @@ const nowIso = () => new Date().toISOString();
 // ── Items ──────────────────────────────────────────────────
 
 export async function listActiveItems(): Promise<Item[]> {
-	const items = await db.items.toArray();
-	return items.filter((i) => !i.archivedAt).sort((a, b) => a.name.localeCompare(b.name));
+	return getSnapshot()
+		.items.filter((i) => !i.archivedAt)
+		.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function listAllItems(): Promise<Item[]> {
-	return db.items.toArray();
+	return [...getSnapshot().items];
 }
 
 export async function createItem(name: string, kind: LineKind, parentId?: string): Promise<Item> {
-	if (parentId) {
-		const parent = await db.items.get(parentId);
-		if (!parent) throw new Error(`Parent item ${parentId} not found`);
-		if (parent.kind !== kind)
-			throw new Error(`Parent kind (${parent.kind}) does not match new item kind (${kind})`);
-		if (parent.parentId)
-			throw new Error('Cannot nest under a sub-item — only one level of hierarchy is supported');
-		if (parent.homeId) throw new Error('Cannot add sub-items under a home-managed item');
-	}
-	const item: Item = { id: uuid(), name, kind, createdAt: nowIso(), parentId };
-	await db.items.add(item);
-	return item;
+	return mutate((draft) => {
+		if (parentId) {
+			const parent = draft.items.find((i) => i.id === parentId);
+			if (!parent) throw new Error(`Parent item ${parentId} not found`);
+			if (parent.kind !== kind)
+				throw new Error(`Parent kind (${parent.kind}) does not match new item kind (${kind})`);
+			if (parent.parentId)
+				throw new Error('Cannot nest under a sub-item — only one level of hierarchy is supported');
+			if (parent.homeId) throw new Error('Cannot add sub-items under a home-managed item');
+		}
+		const item: Item = { id: uuid(), name, kind, createdAt: nowIso(), parentId };
+		draft.items.push(item);
+		return item;
+	});
 }
 
 export async function renameItem(id: string, name: string): Promise<void> {
-	await db.items.update(id, { name });
+	await mutate((draft) => {
+		const item = draft.items.find((i) => i.id === id);
+		if (item) item.name = name;
+	});
 }
 
 export async function archiveItem(id: string): Promise<void> {
-	await db.items.update(id, { archivedAt: nowIso() });
+	await mutate((draft) => {
+		const item = draft.items.find((i) => i.id === id);
+		if (item) item.archivedAt = nowIso();
+	});
 }
 
 export async function unarchiveItem(id: string): Promise<void> {
-	const item = await db.items.get(id);
-	if (!item) return;
-	const next: Partial<Item> = { archivedAt: undefined };
-	await db.items.update(id, next);
-	// Dexie's update with undefined doesn't always remove; force put if needed.
-	if ((await db.items.get(id))?.archivedAt) {
-		const cleaned = { ...item } as Item;
-		delete cleaned.archivedAt;
-		await db.items.put(cleaned);
-	}
+	await mutate((draft) => {
+		const item = draft.items.find((i) => i.id === id);
+		if (item) delete item.archivedAt;
+	});
 }
 
 export interface DeleteItemImpact {
@@ -71,10 +75,13 @@ export interface DeleteItemImpact {
  * before a hard delete. Read-only.
  */
 export async function previewDeleteItem(id: string): Promise<DeleteItemImpact> {
-	const entries = await db.journalEntries.toArray();
+	return countImpact(getSnapshot(), id);
+}
+
+function countImpact(snap: Snapshot, id: string): DeleteItemImpact {
 	let entriesAffected = 0;
 	let linesRemoved = 0;
-	for (const entry of entries) {
+	for (const entry of snap.journalEntries) {
 		const matches = entry.lines.filter((l) => l.itemId === id).length;
 		if (matches > 0) {
 			entriesAffected += 1;
@@ -92,67 +99,50 @@ export async function previewDeleteItem(id: string): Promise<DeleteItemImpact> {
  * that have child sub-items (delete or reparent the children first).
  */
 export async function deleteItem(id: string): Promise<DeleteItemImpact> {
-	const item = await db.items.get(id);
-	if (!item) return { entriesAffected: 0, linesRemoved: 0 };
-	if (item.homeId) {
-		throw new Error('This item is managed by a Home — archive the home instead.');
-	}
+	return mutate((draft) => {
+		const item = draft.items.find((i) => i.id === id);
+		if (!item) return { entriesAffected: 0, linesRemoved: 0 };
+		if (item.homeId) {
+			throw new Error('This item is managed by a Home — archive the home instead.');
+		}
 
-	const all = await db.items.toArray();
-	const children = all.filter((i) => i.parentId === id);
-	if (children.length > 0) {
-		throw new Error(
-			`Cannot delete: this item has ${children.length} sub-item${children.length === 1 ? '' : 's'}. Delete or reparent them first.`
-		);
-	}
+		const children = draft.items.filter((i) => i.parentId === id);
+		if (children.length > 0) {
+			throw new Error(
+				`Cannot delete: this item has ${children.length} sub-item${children.length === 1 ? '' : 's'}. Delete or reparent them first.`
+			);
+		}
 
-	const ts = nowIso();
-	let entriesAffected = 0;
-	let linesRemoved = 0;
-
-	await db.transaction('rw', [db.items, db.journalEntries, db.costToMove], async () => {
-		const entries = await db.journalEntries.toArray();
-		for (const entry of entries) {
+		const impact = countImpact(draft, id);
+		const ts = nowIso();
+		for (const entry of draft.journalEntries) {
 			const filtered = entry.lines.filter((l) => l.itemId !== id);
 			if (filtered.length !== entry.lines.length) {
-				entriesAffected += 1;
-				linesRemoved += entry.lines.length - filtered.length;
-				await db.journalEntries.put({ ...entry, lines: filtered, updatedAt: ts });
+				entry.lines = filtered;
+				entry.updatedAt = ts;
 			}
 		}
 
-		const ctm = await db.costToMove.get('singleton');
-		if (ctm) {
-			let changed = false;
-			const next: CostToMoveState = { ...ctm };
-			if (id in next.assetSelections) {
-				next.assetSelections = { ...next.assetSelections };
-				delete next.assetSelections[id];
-				changed = true;
-			}
-			if (id in next.expenseSelections) {
-				next.expenseSelections = { ...next.expenseSelections };
-				delete next.expenseSelections[id];
-				changed = true;
-			}
-			if (changed) await db.costToMove.put(next);
+		if (draft.costToMove) {
+			delete draft.costToMove.assetSelections[id];
+			delete draft.costToMove.expenseSelections[id];
 		}
 
-		await db.items.delete(id);
+		draft.items = draft.items.filter((i) => i.id !== id);
+		return impact;
 	});
-
-	return { entriesAffected, linesRemoved };
 }
 
 // ── Homes ──────────────────────────────────────────────────
 
 export async function listAllHomes(): Promise<Home[]> {
-	return db.homes.toArray();
+	return [...getSnapshot().homes];
 }
 
 export async function listActiveHomes(): Promise<Home[]> {
-	const homes = await db.homes.toArray();
-	return homes.filter((h) => !h.archivedAt).sort((a, b) => a.name.localeCompare(b.name));
+	return getSnapshot()
+		.homes.filter((h) => !h.archivedAt)
+		.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export interface CreateHomeInput {
@@ -164,101 +154,95 @@ export interface CreateHomeInput {
 }
 
 export async function createHome(input: CreateHomeInput): Promise<Home> {
-	const ts = nowIso();
-	const homeId = uuid();
-	const valueItem: Item = {
-		id: uuid(),
-		name: input.name,
-		kind: 'asset',
-		homeId,
-		createdAt: ts
-	};
-	const mortgageItem: Item = {
-		id: uuid(),
-		name: `${input.name} Mortgage`,
-		kind: 'liability',
-		homeId,
-		createdAt: ts
-	};
-	const home: Home = {
-		id: homeId,
-		name: input.name,
-		valueItemId: valueItem.id,
-		mortgageItemId: mortgageItem.id,
-		sellingCostPercent: input.sellingCostPercent,
-		mortgageRate: input.mortgageRate,
-		mortgageYears: input.mortgageYears,
-		mortgageStartDate: input.mortgageStartDate,
-		createdAt: ts
-	};
-
-	await db.transaction('rw', [db.items, db.homes], async () => {
-		await db.items.bulkAdd([valueItem, mortgageItem]);
-		await db.homes.add(home);
+	return mutate((draft) => {
+		const ts = nowIso();
+		const homeId = uuid();
+		const valueItem: Item = {
+			id: uuid(),
+			name: input.name,
+			kind: 'asset',
+			homeId,
+			createdAt: ts
+		};
+		const mortgageItem: Item = {
+			id: uuid(),
+			name: `${input.name} Mortgage`,
+			kind: 'liability',
+			homeId,
+			createdAt: ts
+		};
+		const home: Home = {
+			id: homeId,
+			name: input.name,
+			valueItemId: valueItem.id,
+			mortgageItemId: mortgageItem.id,
+			sellingCostPercent: input.sellingCostPercent,
+			mortgageRate: input.mortgageRate,
+			mortgageYears: input.mortgageYears,
+			mortgageStartDate: input.mortgageStartDate,
+			createdAt: ts
+		};
+		draft.items.push(valueItem, mortgageItem);
+		draft.homes.push(home);
+		return home;
 	});
-	return home;
 }
 
 export async function updateHome(
 	id: string,
 	patch: Partial<Omit<Home, 'id' | 'valueItemId' | 'mortgageItemId' | 'createdAt'>>
 ): Promise<void> {
-	const home = await db.homes.get(id);
-	if (!home) throw new Error(`Home ${id} not found`);
+	await mutate((draft) => {
+		const home = draft.homes.find((h) => h.id === id);
+		if (!home) throw new Error(`Home ${id} not found`);
 
-	await db.transaction('rw', [db.items, db.homes], async () => {
 		if (patch.name !== undefined && patch.name !== home.name) {
-			await db.items.update(home.valueItemId, { name: patch.name });
-			await db.items.update(home.mortgageItemId, { name: `${patch.name} Mortgage` });
+			const value = draft.items.find((i) => i.id === home.valueItemId);
+			const mortgage = draft.items.find((i) => i.id === home.mortgageItemId);
+			if (value) value.name = patch.name;
+			if (mortgage) mortgage.name = `${patch.name} Mortgage`;
 		}
-		await db.homes.update(id, patch);
+		Object.assign(home, patch);
 	});
 }
 
 export async function archiveHome(id: string): Promise<void> {
-	const home = await db.homes.get(id);
-	if (!home) return;
-	const ts = nowIso();
-	await db.transaction('rw', [db.items, db.homes], async () => {
-		await db.items.update(home.valueItemId, { archivedAt: ts });
-		await db.items.update(home.mortgageItemId, { archivedAt: ts });
-		await db.homes.update(id, { archivedAt: ts });
+	await mutate((draft) => {
+		const home = draft.homes.find((h) => h.id === id);
+		if (!home) return;
+		const ts = nowIso();
+		for (const item of draft.items) {
+			if (item.id === home.valueItemId || item.id === home.mortgageItemId) item.archivedAt = ts;
+		}
+		home.archivedAt = ts;
 	});
 }
 
 export async function unarchiveHome(id: string): Promise<void> {
-	const home = await db.homes.get(id);
-	if (!home) return;
-	await db.transaction('rw', [db.items, db.homes], async () => {
-		for (const itemId of [home.valueItemId, home.mortgageItemId]) {
-			const item = await db.items.get(itemId);
-			if (item && item.archivedAt) {
-				const cleaned = { ...item };
-				delete cleaned.archivedAt;
-				await db.items.put(cleaned);
-			}
+	await mutate((draft) => {
+		const home = draft.homes.find((h) => h.id === id);
+		if (!home) return;
+		for (const item of draft.items) {
+			if (item.id === home.valueItemId || item.id === home.mortgageItemId) delete item.archivedAt;
 		}
-		const cleaned = { ...home };
-		delete cleaned.archivedAt;
-		await db.homes.put(cleaned);
+		delete home.archivedAt;
 	});
 }
 
 // ── Journal entries ────────────────────────────────────────
 
 export async function listEntries(): Promise<JournalEntry[]> {
-	const entries = await db.journalEntries.toArray();
-	return entries.sort((a, b) => a.date.localeCompare(b.date));
+	return [...getSnapshot().journalEntries].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export async function getEntryByDate(date: string): Promise<JournalEntry | undefined> {
-	return db.journalEntries.where('date').equals(date).first();
+	return getSnapshot().journalEntries.find((e) => e.date === date);
 }
 
 export async function getPriorEntry(date: string): Promise<JournalEntry | undefined> {
-	const entries = await db.journalEntries.where('date').below(date).toArray();
-	if (entries.length === 0) return undefined;
-	return entries.reduce((latest, e) => (e.date > latest.date ? e : latest));
+	const earlier = getSnapshot().journalEntries.filter((e) => e.date < date);
+	if (earlier.length === 0) return undefined;
+	return earlier.reduce((latest, e) => (e.date > latest.date ? e : latest));
 }
 
 export async function upsertEntry(
@@ -266,113 +250,90 @@ export async function upsertEntry(
 	lines: JournalLine[],
 	notes?: string
 ): Promise<JournalEntry> {
-	const existing = await getEntryByDate(date);
-	const ts = nowIso();
-	if (existing) {
-		const updated: JournalEntry = { ...existing, lines, notes, updatedAt: ts };
-		await db.journalEntries.put(updated);
-		return updated;
-	}
-	const entry: JournalEntry = {
-		id: uuid(),
-		date,
-		lines,
-		notes,
-		createdAt: ts,
-		updatedAt: ts
-	};
-	await db.journalEntries.add(entry);
-	return entry;
+	return mutate((draft) => {
+		const ts = nowIso();
+		const existing = draft.journalEntries.find((e) => e.date === date);
+		if (existing) {
+			existing.lines = lines;
+			existing.notes = notes;
+			existing.updatedAt = ts;
+			return existing;
+		}
+		const entry: JournalEntry = { id: uuid(), date, lines, notes, createdAt: ts, updatedAt: ts };
+		draft.journalEntries.push(entry);
+		return entry;
+	});
 }
 
 export async function deleteEntry(id: string): Promise<void> {
-	await db.journalEntries.delete(id);
+	await mutate((draft) => {
+		draft.journalEntries = draft.journalEntries.filter((e) => e.id !== id);
+	});
 }
 
 /**
  * Returns the existing entry for `date`, or creates one (optionally pre-populated
- * with `defaultLines`) and returns it. Always reads the DB (not a store), so it is
- * safe to call before liveQuery has emitted — preventing accidental overwrites of
- * persisted entries.
+ * with `defaultLines`) and returns it.
  */
 export async function getOrCreateEntry(
 	date: string,
 	defaultLines: JournalLine[] = []
 ): Promise<JournalEntry> {
-	const existing = await getEntryByDate(date);
-	if (existing) return existing;
-	const ts = nowIso();
-	const entry: JournalEntry = {
-		id: uuid(),
-		date,
-		lines: defaultLines.map((l) => ({ ...l })),
-		createdAt: ts,
-		updatedAt: ts
-	};
-	await db.journalEntries.add(entry);
-	return entry;
+	return mutate((draft) => {
+		const existing = draft.journalEntries.find((e) => e.date === date);
+		if (existing) return existing;
+		const ts = nowIso();
+		const entry: JournalEntry = {
+			id: uuid(),
+			date,
+			lines: defaultLines.map((l) => ({ ...l })),
+			createdAt: ts,
+			updatedAt: ts
+		};
+		draft.journalEntries.push(entry);
+		return entry;
+	});
 }
 
 // ── Cost To Move ──────────────────────────────────────────
 
 export async function getCostToMove(): Promise<CostToMoveState> {
-	const existing = await db.costToMove.get('singleton');
-	if (existing) return existing;
-	const fresh = defaultCostToMoveState();
-	await db.costToMove.put(fresh);
-	return fresh;
+	return mutate((draft) => {
+		draft.costToMove ??= defaultCostToMoveState();
+		return draft.costToMove;
+	});
 }
 
 export async function saveCostToMove(state: CostToMoveState): Promise<void> {
-	await db.costToMove.put({ ...state, id: 'singleton' });
+	await mutate((draft) => {
+		draft.costToMove = { ...state, id: 'singleton' };
+	});
 }
 
 // ── Export / import ───────────────────────────────────────
 
 export async function exportAll(): Promise<ExportEnvelope> {
-	const [items, homes, journalEntries, costToMove] = await Promise.all([
-		db.items.toArray(),
-		db.homes.toArray(),
-		db.journalEntries.toArray(),
-		db.costToMove.get('singleton')
-	]);
-	return {
-		version: 1,
-		exportedAt: nowIso(),
-		items,
-		homes,
-		journalEntries,
-		costToMove: costToMove ?? null
-	};
+	return toEnvelope(getSnapshot());
 }
 
 export async function clearAllData(): Promise<void> {
-	await db.transaction('rw', [db.items, db.homes, db.journalEntries, db.costToMove], async () => {
-		await db.items.clear();
-		await db.homes.clear();
-		await db.journalEntries.clear();
-		await db.costToMove.clear();
+	await mutate((draft) => {
+		draft.items = [];
+		draft.homes = [];
+		draft.journalEntries = [];
+		draft.costToMove = null;
 	});
 }
 
 /** 'replace' discards everything stored; 'merge' keeps both sides (see planMerge). */
 export type ImportMode = 'replace' | 'merge';
 
-async function snapshot() {
-	return {
-		items: await db.items.toArray(),
-		homes: await db.homes.toArray(),
-		journalEntries: await db.journalEntries.toArray(),
-		costToMove: (await db.costToMove.get('singleton')) ?? null
-	};
-}
-
 /** What a merge of `data` would do, for confirmation UI. Read-only. */
 export async function previewMerge(data: ExportEnvelope): Promise<MergeSummary> {
-	return planMerge(await snapshot(), normalize(data)).summary;
+	return planMerge(getSnapshot(), normalize(data)).summary;
 }
 
-function normalize(data: ExportEnvelope) {
+function normalize(data: ExportEnvelope): Snapshot {
 	return {
 		items: data.items,
 		homes: data.homes ?? [],
@@ -382,17 +343,11 @@ function normalize(data: ExportEnvelope) {
 }
 
 export async function importAll(data: ExportEnvelope, mode: ImportMode = 'replace'): Promise<void> {
-	await db.transaction('rw', [db.items, db.homes, db.journalEntries, db.costToMove], async () => {
-		// Read inside the transaction so the merge can't be computed against stale data.
-		const next = mode === 'merge' ? planMerge(await snapshot(), normalize(data)) : normalize(data);
-
-		await db.items.clear();
-		await db.homes.clear();
-		await db.journalEntries.clear();
-		await db.costToMove.clear();
-		if (next.items.length) await db.items.bulkAdd(next.items);
-		if (next.homes.length) await db.homes.bulkAdd(next.homes);
-		if (next.journalEntries.length) await db.journalEntries.bulkAdd(next.journalEntries);
-		if (next.costToMove) await db.costToMove.put({ ...next.costToMove, id: 'singleton' });
+	await mutate((draft) => {
+		const next = mode === 'merge' ? planMerge(draft, normalize(data)) : normalize(data);
+		draft.items = next.items;
+		draft.homes = next.homes;
+		draft.journalEntries = next.journalEntries;
+		draft.costToMove = next.costToMove;
 	});
 }

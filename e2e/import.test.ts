@@ -3,29 +3,19 @@ import { fileURLToPath } from 'node:url';
 
 const fixture = fileURLToPath(new URL('./fixtures/backup.json', import.meta.url));
 
-/** Row counts straight out of IndexedDB, to prove the whole envelope survived. */
+/** Row counts straight out of the persisted data file. */
 function storedCounts(page: Page) {
-	return page.evaluate(
-		() =>
-			new Promise((resolve, reject) => {
-				const req = indexedDB.open('LocalMoneyManagerDB');
-				req.onerror = () => reject(req.error);
-				req.onsuccess = () => {
-					const db = req.result;
-					const names = [...db.objectStoreNames];
-					const tx = db.transaction(names, 'readonly');
-					const out: Record<string, number> = {};
-					let left = names.length;
-					for (const n of names) {
-						const c = tx.objectStore(n).count();
-						c.onsuccess = () => {
-							out[n] = c.result;
-							if (--left === 0) resolve(out);
-						};
-					}
-				};
-			})
-	);
+	return page.evaluate(() => {
+		const raw = localStorage.getItem('lmm:data');
+		if (raw === null) return null;
+		const env = JSON.parse(raw);
+		return {
+			items: env.items.length,
+			homes: env.homes.length,
+			journalEntries: env.journalEntries.length,
+			costToMove: env.costToMove ? 1 : 0
+		};
+	});
 }
 
 async function chooseFile(page: Page) {
@@ -35,7 +25,7 @@ async function chooseFile(page: Page) {
 	await expect(page.getByText('Import backup')).toBeVisible();
 }
 
-test('imports a JSON backup into IndexedDB', async ({ page }) => {
+test('imports a JSON backup and persists it', async ({ page }) => {
 	const errors: string[] = [];
 	page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 	page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
@@ -49,12 +39,15 @@ test('imports a JSON backup into IndexedDB', async ({ page }) => {
 	await page.goto('/journal');
 	await expect(page.getByText('2026-05-02')).toBeVisible();
 
-	expect(await storedCounts(page)).toEqual({
-		items: 11,
-		homes: 1,
-		journalEntries: 2,
-		costToMove: 1
-	});
+	// Writes are debounced, so persistence is an eventual assertion.
+	await expect
+		.poll(() => storedCounts(page))
+		.toEqual({
+			items: 11,
+			homes: 1,
+			journalEntries: 2,
+			costToMove: 1
+		});
 	expect(errors, 'console/page errors during import').toEqual([]);
 
 	// Cost To Move's history chart and as-of picker only appear once entries exist.
@@ -81,6 +74,7 @@ test('merging a backup that is already loaded changes nothing', async ({ page })
 	await page.getByRole('button', { name: 'Replace all' }).click();
 	await expect(page.getByText('Import backup')).toBeHidden();
 
+	await expect.poll(() => storedCounts(page)).not.toBeNull();
 	const before = await storedCounts(page);
 
 	await chooseFile(page);
@@ -88,7 +82,7 @@ test('merging a backup that is already loaded changes nothing', async ({ page })
 	await page.getByRole('button', { name: 'Merge' }).click();
 	await expect(page.getByText('Import backup')).toBeHidden();
 
-	expect(await storedCounts(page)).toEqual(before);
+	await expect.poll(() => storedCounts(page)).toEqual(before);
 	expect(errors, 'console/page errors during merge').toEqual([]);
 });
 
@@ -103,10 +97,44 @@ test('a fresh profile offers to import a backup', async ({ page }) => {
 	await page.getByRole('button', { name: 'Merge' }).click();
 
 	await expect(page.getByText('Nothing stored in this browser yet')).toBeHidden();
-	expect(await storedCounts(page)).toEqual({
-		items: 11,
-		homes: 1,
-		journalEntries: 2,
-		costToMove: 0
-	});
+	await expect
+		.poll(() => storedCounts(page))
+		.toEqual({
+			items: 11,
+			homes: 1,
+			journalEntries: 2,
+			costToMove: 0
+		});
+});
+
+test('a journal edit survives a reload', async ({ page }) => {
+	const errors: string[] = [];
+	page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+	page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+
+	await page.goto('/');
+	await chooseFile(page);
+	await page.getByRole('button', { name: 'Replace all' }).click();
+	await expect(page.getByText('Import backup')).toBeHidden();
+
+	await page.goto('/journal');
+	await page.getByRole('button', { name: '+ New entry (today)' }).click();
+
+	// Entries render newest first, so today's new one leads.
+	const todaysEntry = page.locator('[id^="entry-"]').first();
+	const amount = todaysEntry.getByLabel('Checking amount');
+	await expect(amount).toBeVisible();
+	await amount.fill('1234.56');
+	await amount.blur();
+
+	// The whole point of the storage rewrite: a reload must not lose this.
+	await expect
+		.poll(() => page.evaluate(() => localStorage.getItem('lmm:data')?.includes('1234.56')))
+		.toBe(true);
+	await page.reload();
+
+	const reloaded = page.locator('[id^="entry-"]').first();
+	await reloaded.getByLabel(/^Toggle entry for/).check();
+	await expect(reloaded.getByLabel('Checking amount')).toHaveValue(/1,?234\.56/);
+	expect(errors, 'console/page errors during journal edit').toEqual([]);
 });

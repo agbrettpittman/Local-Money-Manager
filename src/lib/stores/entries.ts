@@ -1,15 +1,7 @@
-import { readable, derived } from 'svelte/store';
-import { liveQuery } from 'dexie';
-import { db } from '$lib/db/schema';
-import type { JournalEntry } from '$lib/db/types';
+import { derived } from 'svelte/store';
+import { snapshot } from '$lib/db/store';
 
-export const allEntries = readable<JournalEntry[]>([], (set) => {
-	const sub = liveQuery(() => db.journalEntries.toArray()).subscribe({
-		next: (val) => set(val),
-		error: (err) => console.error('entries liveQuery error', err)
-	});
-	return () => sub.unsubscribe();
-});
+export const allEntries = derived(snapshot, ($s) => $s.journalEntries);
 
 export const entriesByDate = derived(allEntries, ($all) =>
 	[...$all].sort((a, b) => a.date.localeCompare(b.date))

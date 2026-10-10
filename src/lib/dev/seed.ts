@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { db } from '$lib/db/schema';
+import { mutate } from '$lib/db/store';
 import type { Home, Item, JournalEntry } from '$lib/db/types';
 import {
 	defaultAssetSelection,
@@ -15,12 +15,7 @@ function isoDate(d: Date): string {
 }
 
 export async function loadDemoData(): Promise<void> {
-	await db.transaction('rw', [db.items, db.homes, db.journalEntries, db.costToMove], async () => {
-		await db.items.clear();
-		await db.homes.clear();
-		await db.journalEntries.clear();
-		await db.costToMove.clear();
-
+	await mutate((draft) => {
 		const now = new Date().toISOString();
 
 		// Top-level "Bank" parent with two sub-assets.
@@ -81,7 +76,7 @@ export async function loadDemoData(): Promise<void> {
 			createdAt: now
 		};
 
-		await db.items.bulkAdd([
+		draft.items = [
 			bank,
 			checking,
 			savings,
@@ -91,8 +86,8 @@ export async function loadDemoData(): Promise<void> {
 			car,
 			homeValue,
 			homeMortgage
-		]);
-		await db.homes.add(home);
+		];
+		draft.homes = [home];
 
 		const today = new Date();
 		const entries: JournalEntry[] = [];
@@ -127,7 +122,7 @@ export async function loadDemoData(): Promise<void> {
 				updatedAt: d.toISOString()
 			});
 		}
-		await db.journalEntries.bulkAdd(entries);
+		draft.journalEntries = entries;
 
 		const ctm = defaultCostToMoveState();
 		ctm.housePrice = 500_000;
@@ -152,6 +147,6 @@ export async function loadDemoData(): Promise<void> {
 				growthConfig: { annualGrowthRate: 0, growthFrequency: 'yearly' }
 			}
 		];
-		await db.costToMove.put(ctm);
+		draft.costToMove = ctm;
 	});
 }

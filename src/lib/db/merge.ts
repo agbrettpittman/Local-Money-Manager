@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
-import type { CostToMoveState, ExportEnvelope, Home, Item, JournalEntry } from './types';
+import type { Snapshot } from './snapshot';
+import type { CostToMoveState, Home, Item, JournalEntry } from './types';
 
 export interface MergeSummary {
 	itemsAdded: number;
@@ -25,8 +26,6 @@ export interface MergePlan {
 	costToMove: CostToMoveState | null;
 	summary: MergeSummary;
 }
-
-type Snapshot = Pick<ExportEnvelope, 'items' | 'homes' | 'journalEntries' | 'costToMove'>;
 
 const nameKey = (r: { name: string; kind?: string }) =>
 	`${r.kind ?? ''}:${r.name.trim().toLowerCase()}`;

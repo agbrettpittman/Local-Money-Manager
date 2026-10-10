@@ -1,27 +1,33 @@
 <script lang="ts">
 	import './layout.css';
 	import { onMount } from 'svelte';
-	import { db } from '$lib/db/schema';
+	import { initStorage, flush } from '$lib/db/store';
 	import NavLink from '$lib/components/NavLink.svelte';
 	import DataMenu from '$lib/components/DataMenu.svelte';
 	import BackupReminder from '$lib/components/BackupReminder.svelte';
 
 	let { children } = $props();
 
-	type DbStatus = 'loading' | 'ready' | 'blocked' | 'downgrade';
-	let status = $state<DbStatus>('loading');
+	let status = $state<'loading' | 'ready' | 'error'>('loading');
+	let errorDetail = $state('');
 
-	onMount(async () => {
-		try {
-			if (typeof indexedDB === 'undefined') throw new Error('IndexedDB unavailable');
-			await db.open();
-			status = 'ready';
-			void navigator.storage?.persist?.();
-		} catch (err) {
-			// VersionError => the on-disk DB is newer than this build (a downgrade).
-			status = err instanceof Error && err.name === 'VersionError' ? 'downgrade' : 'blocked';
-			console.error('Database failed to open', err);
-		}
+	onMount(() => {
+		initStorage()
+			.then(() => {
+				status = 'ready';
+			})
+			.catch((err) => {
+				// Never fall through to an empty app: that would overwrite real data on the
+				// next save. Refuse to start instead.
+				status = 'error';
+				errorDetail = err instanceof Error ? err.message : String(err);
+				console.error('Could not load your data', err);
+			});
+
+		// Writes are debounced, so the last edit needs flushing before the page goes away.
+		const onLeave = () => void flush();
+		window.addEventListener('beforeunload', onLeave);
+		return () => window.removeEventListener('beforeunload', onLeave);
 	});
 </script>
 
@@ -66,24 +72,16 @@
 	<div class="flex min-h-screen items-center justify-center p-4">
 		<div class="card max-w-md bg-base-100 shadow-md">
 			<div class="card-body items-center text-center">
-				{#if status === 'downgrade'}
-					<h1 class="card-title">Update needed</h1>
-					<p class="text-sm">
-						Your saved data was created by a newer version of Local Money Manager than the one
-						loaded here. Reload to get the latest version.
-					</p>
-					<button type="button" class="btn mt-2 btn-primary" onclick={() => location.reload()}>
-						Reload
-					</button>
-				{:else}
-					<h1 class="card-title">Local storage is blocked</h1>
-					<p class="text-sm">
-						This app stores everything in your browser, but it can't access local storage right now.
-						This usually happens in private/incognito windows or when site data is disabled. Try a
-						normal window or enable site data for this page, then reload.
-					</p>
-					<button type="button" class="btn mt-2" onclick={() => location.reload()}>Reload</button>
+				<h1 class="card-title">Could not load your data</h1>
+				<p class="text-sm">
+					Your saved data couldn't be read, so the app has stopped rather than start empty and risk
+					overwriting it. Your most recent backup file is unaffected.
+				</p>
+				{#if errorDetail}
+					<pre
+						class="mt-2 max-h-32 w-full overflow-auto rounded-box bg-base-200 p-2 text-left text-xs whitespace-pre-wrap">{errorDetail}</pre>
 				{/if}
+				<button type="button" class="btn mt-2" onclick={() => location.reload()}>Reload</button>
 				<p class="mt-3 text-xs text-base-content/40">v{__APP_VERSION__}</p>
 			</div>
 		</div>
