@@ -4,10 +4,16 @@
 	import { entriesByDateDesc } from '$lib/stores/entries';
 	import { activeItems } from '$lib/stores/items';
 	import { getOrCreateEntry } from '$lib/db/repo';
+	import { buildDefaultLines, entryBefore } from '$lib/calc/entryDefaults';
 	import JournalCalendar from '$lib/components/JournalCalendar.svelte';
 	import JournalEntryAccordion from '$lib/components/JournalEntryAccordion.svelte';
 
 	const enteredDates = $derived(new SvelteSet($entriesByDateDesc.map((e) => e.date)));
+
+	// Cloning only has meaning when today is still blank — getOrCreateEntry returns an
+	// existing entry untouched, so the button would otherwise look like it did nothing.
+	const previousEntry = $derived(entryBefore($entriesByDateDesc, todayIso()));
+	const canClone = $derived(previousEntry !== undefined && !enteredDates.has(todayIso()));
 
 	// Track which accordions are open by entry id.
 	const openIds = new SvelteSet<string>();
@@ -28,9 +34,9 @@
 		return `${y}-${m}-${day}`;
 	}
 
-	async function handleDateSelect(date: string) {
-		const defaultLines = $activeItems.map((i) => ({ itemId: i.id, amount: 0 }));
-		const entry = await getOrCreateEntry(date, defaultLines);
+	async function handleDateSelect(date: string, clonePrevious = false) {
+		const prior = clonePrevious ? entryBefore($entriesByDateDesc, date) : undefined;
+		const entry = await getOrCreateEntry(date, buildDefaultLines($activeItems, prior));
 		openIds.add(entry.id);
 		await tick();
 		document
@@ -41,19 +47,37 @@
 	function newEntryToday() {
 		void handleDateSelect(todayIso());
 	}
+
+	function cloneIntoToday() {
+		void handleDateSelect(todayIso(), true);
+	}
 </script>
 
 <header>
 	<h1 class="text-2xl font-semibold">Journal</h1>
 	<p class="text-sm text-base-content/70">
 		Open today's entry or pick another day from the calendar. New entries are pre-populated from
-		your <a href="/assets-and-liabilities" class="link">Assets & Liabilities</a>.
+		your <a href="/assets-and-liabilities" class="link">Assets & Liabilities</a>, at zero — or clone
+		the previous entry's amounts to start from where you left off.
 	</p>
 </header>
 
 <div class="flex items-center justify-start gap-2">
 	<button type="button" class="btn btn-sm btn-primary" onclick={newEntryToday}>
 		+ New entry (today)
+	</button>
+	<button
+		type="button"
+		class="btn btn-sm"
+		onclick={cloneIntoToday}
+		disabled={!canClone}
+		title={canClone
+			? `Start today from ${previousEntry?.date}`
+			: previousEntry
+				? "Today's entry already exists"
+				: 'No earlier entry to clone'}
+	>
+		+ Clone last entry
 	</button>
 	<JournalCalendar {enteredDates} onSelect={handleDateSelect} />
 </div>
