@@ -27,7 +27,12 @@ export function dismissReminderFor(days: number): void {
 	reminderDismissedUntil.set(until);
 }
 
-function recordBackup(): void {
+/**
+ * Marks "a file matching this data exists". Exported because a just-imported profile
+ * is backed up by definition — the file it came from is that copy — so nagging about
+ * it would be wrong.
+ */
+export function recordBackup(): void {
 	const now = new Date().toISOString();
 	if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, now);
 	lastBackupAt.set(now);

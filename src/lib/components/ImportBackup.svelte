@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { importAll, previewMerge } from '$lib/db/repo';
 	import { exportEnvelopeSchema } from '$lib/db/exportSchema';
+	import { recordBackup } from '$lib/backup/backup';
+	import { allItems } from '$lib/stores/items';
+	import { allEntries } from '$lib/stores/entries';
+	import { allHomes } from '$lib/stores/homes';
 	import type { MergeSummary } from '$lib/db/merge';
 	import type { ExportEnvelope } from '$lib/db/types';
 
@@ -44,8 +48,15 @@
 	async function runImport(mode: 'replace' | 'merge') {
 		if (!pendingImport || busy) return;
 		busy = true;
+		// Whether the file alone accounts for everything stored afterwards. A replace
+		// always does; a merge only when there was nothing here to merge into. Anything
+		// else leaves data no single file holds, so the backup reminder still applies.
+		const fileIsWholeStore =
+			mode === 'replace' ||
+			($allItems.length === 0 && $allEntries.length === 0 && $allHomes.length === 0);
 		try {
 			await importAll(pendingImport, mode);
+			if (fileIsWholeStore) recordBackup();
 		} catch (err) {
 			importError = err instanceof Error ? err.message : 'Import failed';
 			confirmDialog?.close();
