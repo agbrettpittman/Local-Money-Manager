@@ -2,13 +2,14 @@
 	import './layout.css';
 	import { onMount } from 'svelte';
 	import { initStorage, flush } from '$lib/db/store';
+	import { EnvelopeTooNewError } from '$lib/db/migrate';
 	import NavLink from '$lib/components/NavLink.svelte';
 	import DataMenu from '$lib/components/DataMenu.svelte';
 	import BackupReminder from '$lib/components/BackupReminder.svelte';
 
 	let { children } = $props();
 
-	let status = $state<'loading' | 'ready' | 'error'>('loading');
+	let status = $state<'loading' | 'ready' | 'error' | 'downgrade'>('loading');
 	let errorDetail = $state('');
 
 	onMount(() => {
@@ -18,8 +19,9 @@
 			})
 			.catch((err) => {
 				// Never fall through to an empty app: that would overwrite real data on the
-				// next save. Refuse to start instead.
-				status = 'error';
+				// next save. Refuse to start instead. A too-new file is its own case —
+				// the data is fine, this build just can't read it yet.
+				status = err instanceof EnvelopeTooNewError ? 'downgrade' : 'error';
 				errorDetail = err instanceof Error ? err.message : String(err);
 				console.error('Could not load your data', err);
 			});
@@ -67,6 +69,25 @@
 {:else if status === 'loading'}
 	<div class="flex min-h-screen items-center justify-center">
 		<span class="loading loading-lg loading-spinner"></span>
+	</div>
+{:else if status === 'downgrade'}
+	<div class="flex min-h-screen items-center justify-center p-4">
+		<div class="card max-w-md bg-base-100 shadow-md">
+			<div class="card-body items-center text-center">
+				<h1 class="card-title">Update needed</h1>
+				<p class="text-sm">
+					Your data was saved by a newer version of Local Money Manager than the one running here.
+					Nothing is wrong with it — this build just can't read the newer format. Update to the
+					latest version to open it.
+				</p>
+				{#if errorDetail}
+					<pre
+						class="mt-2 max-h-32 w-full overflow-auto rounded-box bg-base-200 p-2 text-left text-xs whitespace-pre-wrap">{errorDetail}</pre>
+				{/if}
+				<button type="button" class="btn mt-2" onclick={() => location.reload()}>Reload</button>
+				<p class="mt-3 text-xs text-base-content/40">v{__APP_VERSION__}</p>
+			</div>
+		</div>
 	</div>
 {:else}
 	<div class="flex min-h-screen items-center justify-center p-4">

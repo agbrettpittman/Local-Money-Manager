@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { importAll, previewMerge } from '$lib/db/repo';
 	import { exportEnvelopeSchema } from '$lib/db/exportSchema';
+	import { migrateEnvelope } from '$lib/db/migrate';
 	import { recordBackup } from '$lib/backup/backup';
 	import { allItems } from '$lib/stores/items';
 	import { allEntries } from '$lib/stores/entries';
@@ -32,7 +33,7 @@
 		try {
 			const text = await file.text();
 			const json = JSON.parse(text);
-			const envelope = exportEnvelopeSchema.parse(json);
+			const envelope = exportEnvelopeSchema.parse(migrateEnvelope(json));
 			mergePreview = await previewMerge(envelope);
 			pendingImport = envelope;
 		} catch (err) {

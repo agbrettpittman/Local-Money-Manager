@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ENVELOPE_VERSION } from './snapshot';
 
 const frequencySchema = z.enum(['daily', 'weekly', 'monthly', 'yearly']);
 
@@ -110,8 +111,10 @@ const costToMoveSchema = z.object({
 	futureOverrides: z.record(overridableField, overrideSchema)
 });
 
+// Validates the *current* format only — anything older is brought up to it by
+// migrateEnvelope first, so this never has to describe historical shapes.
 export const exportEnvelopeSchema = z.object({
-	version: z.literal(1),
+	version: z.literal(ENVELOPE_VERSION),
 	exportedAt: z.string(),
 	items: z.array(itemSchema),
 	homes: z.array(homeSchema).default([]),

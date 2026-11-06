@@ -1,5 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { exportEnvelopeSchema } from './exportSchema';
+import { migrateEnvelope } from './migrate';
 import { fromEnvelope, toEnvelope, type Snapshot } from './snapshot';
 
 export interface PersistBackend {
@@ -12,8 +13,9 @@ const STORAGE_KEY = 'lmm:data';
 
 function parseEnvelope(raw: string): Snapshot {
 	// A parse failure means corrupt storage. Throwing keeps the app from starting
-	// empty and then overwriting whatever was really there.
-	return fromEnvelope(exportEnvelopeSchema.parse(JSON.parse(raw)));
+	// empty and then overwriting whatever was really there. Older formats are
+	// upgraded first, so a stored file keeps loading after the shape changes.
+	return fromEnvelope(exportEnvelopeSchema.parse(migrateEnvelope(JSON.parse(raw))));
 }
 
 /**
