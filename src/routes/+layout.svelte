@@ -9,6 +9,7 @@
 	import BackupReminder from '$lib/components/BackupReminder.svelte';
 	import UpdateBanner from '$lib/components/UpdateBanner.svelte';
 	import Toast from '$lib/components/Toast.svelte';
+	import { availableUpdate, startUpdatePolling } from '$lib/stores/update';
 
 	let { children } = $props();
 
@@ -29,10 +30,15 @@
 				console.error('Could not load your data', err);
 			});
 
+		const stopPolling = startUpdatePolling();
+
 		// Writes are debounced, so the last edit needs flushing before the page goes away.
 		const onLeave = () => void flush();
 		window.addEventListener('beforeunload', onLeave);
-		return () => window.removeEventListener('beforeunload', onLeave);
+		return () => {
+			stopPolling();
+			window.removeEventListener('beforeunload', onLeave);
+		};
 	});
 </script>
 
@@ -70,8 +76,15 @@
 		{@render children()}
 	</main>
 
-	<footer class="container mx-auto max-w-6xl px-4 pb-4 text-right text-xs text-base-content/40">
-		v{__APP_VERSION__}
+	<footer class="container mx-auto max-w-6xl px-4 pb-4 text-right text-xs">
+		<span
+			class={$availableUpdate ? 'font-semibold text-error' : 'text-base-content/40'}
+			title={$availableUpdate
+				? `Version ${$availableUpdate.version} is available — this copy is out of date`
+				: undefined}
+		>
+			v{__APP_VERSION__}{#if $availableUpdate}&nbsp;· update available{/if}
+		</span>
 	</footer>
 
 	<Toast />
