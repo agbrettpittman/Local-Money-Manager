@@ -1,6 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import { initStorage, flush } from '$lib/db/store';
 	import { EnvelopeTooNewError } from '$lib/db/migrate';
 	import NavLink from '$lib/components/NavLink.svelte';
@@ -42,7 +43,10 @@
 {#if status === 'ready'}
 	<div class="navbar sticky top-0 z-30 bg-base-100 shadow-sm">
 		<div class="navbar-start">
-			<a class="btn text-lg font-bold normal-case btn-ghost" href="/">💰 LMM</a>
+			<a class="btn gap-2 text-lg font-bold normal-case btn-ghost" href="/">
+				<img src="{base}/favicon.svg" alt="" width="24" height="24" class="rounded-md" />
+				LMM
+			</a>
 		</div>
 		<div class="navbar-center">
 			<ul class="menu menu-horizontal items-center gap-1 px-1">
