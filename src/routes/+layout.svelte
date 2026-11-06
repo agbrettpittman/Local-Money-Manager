@@ -7,6 +7,7 @@
 	import DataMenu from '$lib/components/DataMenu.svelte';
 	import BackupReminder from '$lib/components/BackupReminder.svelte';
 	import UpdateBanner from '$lib/components/UpdateBanner.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 
 	let { children } = $props();
 
@@ -68,6 +69,8 @@
 	<footer class="container mx-auto max-w-6xl px-4 pb-4 text-right text-xs text-base-content/40">
 		v{__APP_VERSION__}
 	</footer>
+
+	<Toast />
 {:else if status === 'loading'}
 	<div class="flex min-h-screen items-center justify-center">
 		<span class="loading loading-lg loading-spinner"></span>

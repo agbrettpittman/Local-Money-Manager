@@ -1,5 +1,7 @@
 import { writable } from 'svelte/store';
 import { exportAll } from '$lib/db/repo';
+import { isDesktop } from '$lib/platform';
+import { showToast } from '$lib/stores/toast';
 
 const STORAGE_KEY = 'lmm:lastBackupAt';
 const DISMISS_KEY = 'lmm:backupReminderDismissedUntil';
@@ -55,12 +57,18 @@ export async function downloadBackup(): Promise<void> {
 	const data = await exportAll();
 	const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
+	const filename = `local-money-manager-${todayIsoSlug()}.json`;
 	const a = document.createElement('a');
 	a.href = url;
-	a.download = `local-money-manager-${todayIsoSlug()}.json`;
+	a.download = filename;
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
 	URL.revokeObjectURL(url);
 	recordBackup();
+
+	// The desktop webview saves straight to Downloads with no download bar, so the
+	// click looks like it did nothing. A browser shows its own UI, so this would
+	// only be noise there.
+	if (isDesktop) showToast(`Backup saved to your Downloads folder — ${filename}`);
 }
