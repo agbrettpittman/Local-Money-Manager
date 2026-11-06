@@ -1,0 +1,11 @@
+# The index stores LF and every checkout gets LF, on all platforms.
+#
+# Without this, core.autocrlf=true gives Windows a CRLF working tree while the index
+# stays LF. Prettier (endOfLine: "lf") then reports every file in the repo as
+# unformatted, so `npm run lint` cannot pass on Windows at all.
+* text=auto eol=lf
+
+# Binary assets: never normalise these.
+*.png binary
+*.ico binary
+*.icns binary
