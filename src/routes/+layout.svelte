@@ -6,6 +6,7 @@
 	import NavLink from '$lib/components/NavLink.svelte';
 	import DataMenu from '$lib/components/DataMenu.svelte';
 	import BackupReminder from '$lib/components/BackupReminder.svelte';
+	import UpdateBanner from '$lib/components/UpdateBanner.svelte';
 
 	let { children } = $props();
 
@@ -59,6 +60,7 @@
 	</div>
 
 	<main class="container mx-auto max-w-6xl space-y-4 p-4">
+		<UpdateBanner />
 		<BackupReminder />
 		{@render children()}
 	</main>

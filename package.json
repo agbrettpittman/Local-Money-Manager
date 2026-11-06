@@ -17,6 +17,7 @@
 		"tauri": "tauri",
 		"tauri:dev": "tauri dev",
 		"tauri:build": "tauri build",
+		"release:manifest": "node scripts/make-latest-json.mjs",
 		"test": "npm run test:unit -- --run"
 	},
 	"devDependencies": {
@@ -48,6 +49,7 @@
 	},
 	"dependencies": {
 		"@tauri-apps/api": "^2.12.2",
+		"@tauri-apps/plugin-updater": "^2.14.1",
 		"chart.js": "^4.5.1",
 		"chartjs-adapter-date-fns": "^3.0.0",
 		"date-fns": "^4.1.0",

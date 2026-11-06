@@ -12,13 +12,15 @@
 	"app": {
 		"windows": [
 			{
+				"label": "main",
 				"title": "Local Money Manager",
 				"width": 1280,
 				"height": 860,
 				"minWidth": 900,
 				"minHeight": 600,
 				"resizable": true,
-				"fullscreen": false
+				"fullscreen": false,
+				"center": true
 			}
 		],
 		"security": {
@@ -27,7 +29,7 @@
 	},
 	"bundle": {
 		"active": true,
-		"targets": "all",
+		"targets": ["nsis"],
 		"icon": [
 			"icons/32x32.png",
 			"icons/128x128.png",
@@ -35,8 +37,34 @@
 			"icons/icon.icns",
 			"icons/icon.ico"
 		],
+		"copyright": "Brett Pittman",
+		"category": "Finance",
+		"shortDescription": "Local-first net worth journal",
+		"longDescription": "Track assets and liabilities over time in a private journal, and plan what moving house would cost. All data stays in a file on your own machine.",
+		"publisher": "Brett Pittman",
+		"homepage": "https://github.com/agbrettpittman/Local-Money-Manager",
+		"windows": {
+			"nsis": {
+				"installMode": "currentUser",
+				"languages": ["English"],
+				"displayLanguageSelector": false,
+				"installerIcon": "icons/icon.ico"
+			},
+			"webviewInstallMode": {
+				"type": "downloadBootstrapper"
+			}
+		},
+		"createUpdaterArtifacts": true,
 		"android": {
 			"debugApplicationIdSuffix": ".debug"
+		}
+	},
+	"plugins": {
+		"updater": {
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFDNThFREQ1MjVBODczOTcKUldTWGM2Z2wxZTFZck9KWnp4cE96RnA5anNTcnEzdC8xUkxTRXEyYWFCd3hUV3pjVjZkdUJoMkQK",
+			"endpoints": [
+				"https://github.com/agbrettpittman/Local-Money-Manager/releases/latest/download/latest.json"
+			]
 		}
 	}
 }
