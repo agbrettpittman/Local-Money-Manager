@@ -10,15 +10,16 @@ const TIMEOUT_MS = 10_000;
 /**
  * Looks for a newer release, or returns null.
  *
- * Every failure is swallowed deliberately. The endpoint 404s until a release
- * publishes a `latest.json`, and there is nothing useful to tell someone about an
- * update check that couldn't reach anything — an error banner on every launch
- * would be worse than no updater at all.
+ * Failures never reach the UI — an unreachable endpoint is not worth a banner on
+ * every launch — but they are logged, because "check failed" and "nothing new"
+ * otherwise look identical. A missing `updater:default` capability hid behind that
+ * silence once already.
  */
 export async function findUpdate(): Promise<Update | null> {
 	try {
 		return await check({ timeout: TIMEOUT_MS });
-	} catch {
+	} catch (e) {
+		console.warn('Update check failed', e);
 		return null;
 	}
 }
